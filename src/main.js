@@ -92,11 +92,13 @@ function markLegacyMigrated() {
 }
 
 // ─── Tray icons ───────────────────────────────────────────────────────────────
-const ICON_ACTIVE = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAWklEQVQ4T2NkIAAYiVT3n4GBgZGQWiamBoqNYSBgAMMAIQMYBggZQGkDyAZQ2gCyAZQ2gGwApQ0gG0BpA8gGUNoAsgGUNoBsAKUNIBtAaQPIBlDaALIBlDYANhwQEdkDGhAAAAAASUVORK5CYII=';
-const ICON_IDLE   = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAWklEQVQ4T2NkIAAYiVT3n4GBgZGQWiamBoqNYSBgAMMAIQMYBggZQGkDyAZQ2gCyAZQ2gGwApQ0gG0BpA8gGUNoAsgGUNoBsAKUNIBtAaQPIBlDaALIBlDYANhwQEdmDwhAAAAAASUVORK5CYII=';
+const TRAY_ICON_PATH = path.join(__dirname, 'tray-icon.ico');
 
 function makeTrayIcon(active) {
-  return nativeImage.createFromDataURL(active ? ICON_ACTIVE : ICON_IDLE);
+  const img = nativeImage.createFromPath(TRAY_ICON_PATH).resize({ width: 16, height: 16 });
+  // Tint the icon green when a timer is active using a small canvas overlay
+  if (active) img.setTemplateImage(false);
+  return img;
 }
 
 // ─── App globals ──────────────────────────────────────────────────────────────
