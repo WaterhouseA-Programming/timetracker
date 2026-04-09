@@ -11,14 +11,8 @@ jobs:
   release:
     runs-on: windows-latest
 
-    # Skip the automated version-bump commit to prevent infinite loops
-    if: "!contains(github.event.head_commit.message, '[skip ci]')"
-
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
 
       - uses: actions/setup-node@v4
         with:
@@ -28,24 +22,8 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Bump patch version
-        run: npm version patch --no-git-tag-version
-
-      - name: Read new version
-        id: pkg
-        run: echo "version=$(node -p "require('./package.json').version")" >> $env:GITHUB_OUTPUT
-
-      - name: Commit & push version bump
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add package.json package-lock.json
-          git commit -m "v${{ steps.pkg.outputs.version }} [skip ci]"
-          git push
-
       - name: Build & publish release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # Prevents electron-builder from trying to notarise/sign on CI
           CSC_IDENTITY_AUTO_DISCOVERY: false
         run: npm run dist -- --publish always
