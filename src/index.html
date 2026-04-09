@@ -413,7 +413,10 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
     <div class="page" id="page-manage">
       <div class="page-header">
         <div class="page-title">Projects</div>
-        <button class="btn btn-primary" onclick="openAddCustomer()">+ Customer</button>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-ghost" onclick="forceSync(this)">↺ Sync</button>
+          <button class="btn btn-primary" onclick="openAddCustomer()">+ Customer</button>
+        </div>
       </div>
 
       <!-- Firebase connection -->
@@ -447,9 +450,35 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
         </div>
       </div>
 
+
+      <div id="manage-list"></div>
+    </div>
+
+    <!-- Settings page -->
+    <div class="page" id="page-settings">
+      <div class="page-header"><div class="page-title">Settings</div></div>
+
+      <div class="settings-card">
+        <div class="settings-row">
+          <div><div class="settings-label">Theme</div><div class="settings-sub">Switch between dark and light mode</div></div>
+          <div style="display:flex;align-items:center;gap:8px;font-size:11px;color:var(--muted2)">
+            <span id="theme-label-dark">Dark</span>
+            <label class="toggle"><input type="checkbox" id="theme-toggle" onchange="toggleTheme(this.checked)"><span class="toggle-track"><span class="toggle-thumb"></span></span></label>
+            <span id="theme-label-light">Light</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-card">
+        <div class="settings-row">
+          <div><div class="settings-label">Launch at Windows startup</div><div class="settings-sub">Open automatically when you log in</div></div>
+          <label class="toggle"><input type="checkbox" id="auto-start-toggle" onchange="toggleAutoStart(this.checked)"><span class="toggle-track"><span class="toggle-thumb"></span></span></label>
+        </div>
+      </div>
+
       <!-- Billing settings -->
       <div class="settings-card" id="billing-settings-card">
-        <div style="font-family:'Plus Jakarta Sans',sans-serif;font-size:13px;font-weight:700;margin-bottom:14px">Billing Settings</div>
+        <div style="font-size:13px;font-weight:700;margin-bottom:14px">Billing Settings</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
           <div class="form-field" style="margin-bottom:0">
             <label>Your Name / Business</label>
@@ -479,31 +508,6 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
           <textarea id="billing-address" rows="3" oninput="debounceSaveSettings()"
             style="width:100%;padding:9px 11px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:'Plus Jakarta Sans',sans-serif;font-size:12px;outline:none;resize:vertical"
             placeholder="123 Main St&#10;London, W1A 1AA"></textarea>
-        </div>
-      </div>
-
-      <div id="manage-list"></div>
-    </div>
-
-    <!-- Settings page -->
-    <div class="page" id="page-settings">
-      <div class="page-header"><div class="page-title">Settings</div></div>
-
-      <div class="settings-card">
-        <div class="settings-row">
-          <div><div class="settings-label">Theme</div><div class="settings-sub">Switch between dark and light mode</div></div>
-          <div style="display:flex;align-items:center;gap:8px;font-size:11px;color:var(--muted2)">
-            <span id="theme-label-dark">Dark</span>
-            <label class="toggle"><input type="checkbox" id="theme-toggle" onchange="toggleTheme(this.checked)"><span class="toggle-track"><span class="toggle-thumb"></span></span></label>
-            <span id="theme-label-light">Light</span>
-          </div>
-        </div>
-      </div>
-
-      <div class="settings-card">
-        <div class="settings-row">
-          <div><div class="settings-label">Launch at Windows startup</div><div class="settings-sub">Open automatically when you log in</div></div>
-          <label class="toggle"><input type="checkbox" id="auto-start-toggle" onchange="toggleAutoStart(this.checked)"><span class="toggle-track"><span class="toggle-thumb"></span></span></label>
         </div>
       </div>
 
@@ -1533,6 +1537,14 @@ function checkUpdates() {
   api.checkForUpdates?.();
 }
 window.checkUpdates = checkUpdates;
+
+function forceSync(btn) {
+  if (!db || !_fs) { alert('Firebase not connected.'); return; }
+  if (btn) { btn.textContent = '↺ Syncing…'; btn.disabled = true; }
+  subscribeAll();
+  setTimeout(() => { if (btn) { btn.textContent = '↺ Sync'; btn.disabled = false; } }, 1500);
+}
+window.forceSync = forceSync;
 
 // Listen for update status pushed from main process
 api.onUpdateStatus?.(msg => {

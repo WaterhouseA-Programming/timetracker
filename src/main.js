@@ -34,7 +34,11 @@ function sendUpdateStatus(msg) {
 }
 
 function checkForUpdates() {
-  autoUpdater.checkForUpdates().catch(() => sendUpdateStatus('Could not reach update server.'));
+  if (!app.isPackaged) {
+    sendUpdateStatus('Update checks only run in the installed app, not during development.');
+    return;
+  }
+  autoUpdater.checkForUpdates().catch(e => sendUpdateStatus('Could not reach update server: ' + e.message));
 }
 
 autoUpdater.on('checking-for-update',  () => sendUpdateStatus('Checking for updates…'));

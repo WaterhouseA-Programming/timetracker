@@ -4,7 +4,6 @@ on:
   push:
     branches: [master]
 
-# Needed to create releases and push the version bump commit
 permissions:
   contents: write
 
@@ -12,19 +11,22 @@ jobs:
   release:
     runs-on: windows-latest
 
-    # Skip if this is the automated version-bump commit (prevents infinite loop)
+    # Skip the automated version-bump commit to prevent infinite loops
     if: "!contains(github.event.head_commit.message, '[skip ci]')"
 
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          # Use GITHUB_TOKEN so the version-bump push doesn't re-trigger this workflow
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - uses: actions/setup-node@v4
         with:
           node-version: 18
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
 
       - name: Bump patch version
         run: npm version patch --no-git-tag-version
@@ -41,10 +43,9 @@ jobs:
           git commit -m "v${{ steps.pkg.outputs.version }} [skip ci]"
           git push
 
-      - name: Install dependencies
-        run: npm install
-
       - name: Build & publish release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Prevents electron-builder from trying to notarise/sign on CI
+          CSC_IDENTITY_AUTO_DISCOVERY: false
         run: npm run dist -- --publish always
