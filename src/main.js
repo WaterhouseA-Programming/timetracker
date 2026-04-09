@@ -26,14 +26,25 @@ const fs   = require('fs');
 const os   = require('os');
 
 // ─── Auto-updater ─────────────────────────────────────────────────────────────
-autoUpdater.autoDownload    = true;   // download silently in background
-autoUpdater.autoInstallOnAppQuit = true; // install when user quits
+autoUpdater.autoDownload         = true;
+autoUpdater.autoInstallOnAppQuit = true;
 
-function checkForUpdates() {
-  autoUpdater.checkForUpdates().catch(() => {}); // silently ignore network errors
+function sendUpdateStatus(msg) {
+  if (mainWindow) mainWindow.webContents.send('update-status', msg);
 }
 
+function checkForUpdates() {
+  autoUpdater.checkForUpdates().catch(() => sendUpdateStatus('Could not reach update server.'));
+}
+
+autoUpdater.on('checking-for-update',  () => sendUpdateStatus('Checking for updates…'));
+autoUpdater.on('update-not-available', () => sendUpdateStatus('You\'re on the latest version.'));
+autoUpdater.on('update-available',     () => sendUpdateStatus('Update found — downloading…'));
+autoUpdater.on('download-progress',   p  => sendUpdateStatus(`Downloading… ${Math.round(p.percent)}%`));
+autoUpdater.on('error',               e  => sendUpdateStatus(`Update error: ${e.message}`));
+
 autoUpdater.on('update-downloaded', () => {
+  sendUpdateStatus('Update ready to install.');
   if (!mainWindow) return;
   dialog.showMessageBox(mainWindow, {
     type: 'info',
@@ -46,6 +57,8 @@ autoUpdater.on('update-downloaded', () => {
     if (response === 0) autoUpdater.quitAndInstall();
   });
 });
+
+ipcMain.handle('check-for-updates', () => { checkForUpdates(); });
 
 // ─── Local-only state (active timer mirror + tray cache) ──────────────────────
 // Written by renderer via 'timer-state-update' IPC whenever timer starts/stops.

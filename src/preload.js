@@ -23,8 +23,12 @@ contextBridge.exposeInMainWorld('api', {
   minimize: ()                 => ipcRenderer.invoke('window-minimize'),
   close:    ()                 => ipcRenderer.invoke('window-close'),
 
+  // ── Updates ───────────────────────────────────────────────────────────────
+  checkForUpdates: ()          => ipcRenderer.invoke('check-for-updates'),
+
   // ── Main → renderer events ────────────────────────────────────────────────
-  onTrayStopTimer:  (cb) => ipcRenderer.on('tray-stop-timer',  ()      => cb()),
-  onTrayStartTimer: (cb) => ipcRenderer.on('tray-start-timer', (_, p)  => cb(p)),
-  onIdleAction:     (cb) => ipcRenderer.on('idle-action',      (_, p)  => cb(p)),
+  onTrayStopTimer:    (cb) => ipcRenderer.on('tray-stop-timer',    ()      => cb()),
+  onTrayStartTimer:   (cb) => ipcRenderer.on('tray-start-timer',   (_, p)  => cb(p)),
+  onIdleAction:       (cb) => ipcRenderer.on('idle-action',        (_, p)  => cb(p)),
+  onUpdateStatus:     (cb) => ipcRenderer.on('update-status',      (_, msg)=> cb(msg)),
 });

@@ -506,6 +506,13 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
           <label class="toggle"><input type="checkbox" id="auto-start-toggle" onchange="toggleAutoStart(this.checked)"><span class="toggle-track"><span class="toggle-thumb"></span></span></label>
         </div>
       </div>
+
+      <div class="settings-card">
+        <div class="settings-row">
+          <div><div class="settings-label">App Updates</div><div class="settings-sub" id="update-status-text">Click to check for a newer version</div></div>
+          <button class="btn btn-ghost" onclick="checkUpdates()">Check now</button>
+        </div>
+      </div>
     </div>
 
   </div>
@@ -1519,6 +1526,19 @@ function toggleTheme(isLight) {
   localStorage.setItem('tt_theme', theme);
 }
 window.toggleTheme = toggleTheme;
+
+function checkUpdates() {
+  const el = document.getElementById('update-status-text');
+  if (el) el.textContent = 'Checking…';
+  api.checkForUpdates?.();
+}
+window.checkUpdates = checkUpdates;
+
+// Listen for update status pushed from main process
+api.onUpdateStatus?.(msg => {
+  const el = document.getElementById('update-status-text');
+  if (el) el.textContent = msg;
+});
 
 function loadTheme() {
   const theme = localStorage.getItem('tt_theme') || 'dark';
