@@ -22,6 +22,14 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Set version from run number
+        # Uses major.minor from package.json, run number as patch (always increments)
+        # e.g. package.json has 1.0.0 → built as 1.0.7, 1.0.8, 1.0.9 ...
+        # Never commits back to the repo so no race conditions possible
+        run: |
+          $base = (node -p "require('./package.json').version") -replace '\.\d+$', ''
+          npm version "$base.${{ github.run_number }}" --no-git-tag-version
+
       - name: Build & publish release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
