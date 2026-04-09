@@ -157,7 +157,7 @@ function buildTrayMenu() {
     },
     { type: 'separator' },
     {
-      label: '🔀  Switch Project',
+      label: 'Switch Project',
       submenu: switchItems.length
         ? switchItems
         : [{ label: 'No projects yet', enabled: false }],
@@ -165,7 +165,7 @@ function buildTrayMenu() {
     { type: 'separator' },
     { label: getTodayLabel(), enabled: false },
     { type: 'separator' },
-    { label: '🪟  Open Window', click: () => createWindow() },
+    { label: 'Open Window', click: () => createWindow() },
     { type: 'separator' },
     {
       label: 'Quit',
@@ -311,6 +311,10 @@ ipcMain.handle('mark-legacy-migrated', () => { markLegacyMigrated(); return true
 // Auto-start
 ipcMain.handle('get-auto-start', () => getAutoStart());
 ipcMain.handle('set-auto-start', (_, on) => { setAutoStart(on); return getAutoStart(); });
+
+// Firebase config — persisted in AppData so it survives reinstalls
+ipcMain.handle('get-fb-config', () => { const s = loadSettings(); return s.fbConfig || null; });
+ipcMain.handle('save-fb-config', (_, cfg) => { const s = loadSettings(); s.fbConfig = cfg; saveSettings(s); });
 
 // Native budget notification (fired by renderer after Firestore write)
 ipcMain.on('send-notification', (_, { title, body }) => {

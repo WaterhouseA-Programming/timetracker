@@ -23,6 +23,10 @@ contextBridge.exposeInMainWorld('api', {
   minimize: ()                 => ipcRenderer.invoke('window-minimize'),
   close:    ()                 => ipcRenderer.invoke('window-close'),
 
+  // ── Firebase config persistence (survives reinstalls) ────────────────────
+  getFbConfig:  ()             => ipcRenderer.invoke('get-fb-config'),
+  saveFbConfig: (cfg)          => ipcRenderer.invoke('save-fb-config', cfg),
+
   // ── Updates ───────────────────────────────────────────────────────────────
   checkForUpdates: ()          => ipcRenderer.invoke('check-for-updates'),
 

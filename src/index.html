@@ -649,6 +649,7 @@ async function connectFirebase(configOverride) {
     _fs  = fb;
 
     localStorage.setItem('fb_config', JSON.stringify(config));
+    api.saveFbConfig?.(config); // also persist to AppData so it survives reinstalls
     setFbStatus(true);
     subscribeAll();
     checkLegacyMigration();
@@ -1943,10 +1944,12 @@ async function boot() {
 
   loadBillingSettingsUI();
 
-  // Try to reconnect Firebase from saved config
-  const saved = localStorage.getItem('fb_config');
+  // Try to reconnect Firebase — check AppData first (survives reinstalls), then localStorage
+  const savedNative = await api.getFbConfig?.();
+  const savedLocal  = localStorage.getItem('fb_config');
+  const saved = savedNative || savedLocal;
   if (saved) {
-    try { await connectFirebase(JSON.parse(saved)); }
+    try { await connectFirebase(typeof saved === 'string' ? JSON.parse(saved) : saved); }
     catch { setFbStatus(false); }
   } else {
     setFbStatus(false);
