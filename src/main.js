@@ -111,7 +111,7 @@ function createWindow() {
   });
 
   mainWindow.loadFile(path.join(__dirname, 'index.html'));
-  mainWindow.once('ready-to-show', () => { mainWindow.show(); checkForUpdates(); });
+  mainWindow.once('ready-to-show', () => { checkForUpdates(); }); // stays in tray until opened
   mainWindow.on('close', e => { e.preventDefault(); mainWindow.hide(); });
   mainWindow.on('closed', () => { mainWindow = null; });
 }
