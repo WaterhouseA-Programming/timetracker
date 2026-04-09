@@ -64,7 +64,8 @@
     "publish": {
       "provider": "github",
       "owner": "WaterhouseA-Programming",
-      "repo": "timetracker"
+      "repo": "timetracker",
+      "releaseType": "release"
     }
   },
   "dependencies": {

@@ -346,10 +346,13 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
     <div class="page" id="page-tasks">
       <div class="page-header">
         <div class="page-title">Tasks</div>
-        <div class="fb-row" style="margin-bottom:0">
-          <div class="fb-dot" id="fb-dot"></div>
-          <span id="fb-status">Not connected</span>
-          <span class="fb-link" onclick="showPage('manage',document.querySelector('[data-page=manage]'))" style="margin-left:8px">Configure →</span>
+        <div style="display:flex;align-items:center;gap:10px">
+          <div class="fb-row" style="margin-bottom:0">
+            <div class="fb-dot" id="fb-dot"></div>
+            <span id="fb-status">Not connected</span>
+            <span class="fb-link" onclick="showPage('manage',document.querySelector('[data-page=manage]'))" style="margin-left:8px">Configure →</span>
+          </div>
+          <button class="btn btn-primary" onclick="openAddTaskModal()">+ Add Task</button>
         </div>
       </div>
       <div id="tasks-content">
@@ -1266,6 +1269,49 @@ function getAddBtns(fc, fp) {
   return btns.join('');
 }
 
+function openAddTaskModal() {
+  if (!db) { alert('Connect Firebase first.'); return; }
+  if (!customers.length) { alert('Add a customer and project in the Projects tab first.'); return; }
+  const custOpts = customers.map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join('');
+  showModal('New Task',
+    `<div class="form-field">
+       <label>Customer</label>
+       <select id="m-task-cust" onchange="updateTaskProjDropdown()" style="width:100%;padding:9px 11px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none">
+         ${custOpts}
+       </select>
+     </div>
+     <div class="form-field">
+       <label>Project</label>
+       <select id="m-task-proj" style="width:100%;padding:9px 11px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none"></select>
+     </div>
+     <div class="form-field">
+       <label>Task</label>
+       <input id="m-task-title" type="text" placeholder="e.g. Update homepage copy">
+     </div>`,
+    `<button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+     <button class="btn btn-primary" onclick="doAddTaskFromModal()">Add</button>`);
+  updateTaskProjDropdown();
+  setTimeout(()=>document.getElementById('m-task-title')?.focus(),50);
+}
+window.openAddTaskModal = openAddTaskModal;
+
+window.updateTaskProjDropdown = function() {
+  const cid = document.getElementById('m-task-cust')?.value;
+  const c = customers.find(x=>x.id===cid);
+  const sel = document.getElementById('m-task-proj');
+  if (!sel || !c) return;
+  sel.innerHTML = (c.projects||[]).map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join('');
+};
+
+window.doAddTaskFromModal = function() {
+  const cust = customers.find(c=>c.id===document.getElementById('m-task-cust')?.value);
+  const proj = cust?.projects?.find(p=>p.id===document.getElementById('m-task-proj')?.value);
+  const title = document.getElementById('m-task-title')?.value.trim();
+  if (!cust||!proj||!title) return;
+  closeModal();
+  doAddTask(cust.id, cust.name, proj.id, proj.name, title);
+};
+
 function addTask(cid, cname, pid, pname) {
   if (!db) return;
   showModal(`New Task — ${cname} › ${pname}`,
@@ -1275,9 +1321,8 @@ function addTask(cid, cname, pid, pname) {
      <button class="btn btn-primary" onclick="doAddTask('${cid}','${esc(cname)}','${pid}','${esc(pname)}')">Add</button>`);
   setTimeout(()=>document.getElementById('m-task-title')?.focus(),50);
 }
-async function doAddTask(cid, cname, pid, pname) {
-  const title = document.getElementById('m-task-title').value.trim(); if(!title)return;
-  closeModal();
+async function doAddTask(cid, cname, pid, pname, titleArg) {
+  const title = titleArg || document.getElementById('m-task-title')?.value.trim(); if(!title)return;
   const { collection, addDoc, serverTimestamp } = _fs;
   await addDoc(collection(db,'tasks'), {
     title:title.trim(), status:'todo',
