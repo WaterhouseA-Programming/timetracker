@@ -1,0 +1,74 @@
+{
+  "name": "timetracker",
+  "version": "1.0.0",
+  "description": "Time tracking for customers and projects",
+  "main": "src/main.js",
+  "author": {
+    "name": "Your Name",
+    "email": "you@example.com"
+  },
+  "scripts": {
+    "start":        "electron .",
+    "dist:win":     "electron-builder --win --x64",
+    "dist:portable":"electron-builder --win portable --x64",
+    "dist:all":     "electron-builder --win --x64 --arm64"
+  },
+  "build": {
+    "appId":       "com.timetracker.app",
+    "productName": "TimeTracker",
+    "copyright":   "Copyright © 2025 Your Name",
+
+    "directories": {
+      "output":     "dist",
+      "buildResources": "build"
+    },
+
+    "files": [
+      "src/**/*",
+      "!src/**/*.map"
+    ],
+
+    "extraResources": [],
+
+    "win": {
+      "target": [
+        { "target": "nsis",     "arch": ["x64"] },
+        { "target": "portable", "arch": ["x64"] }
+      ],
+      "icon":            "build/icon.ico",
+      "publisherName":   "Your Name",
+      "verifyUpdateCodeSignature": false
+    },
+
+    "nsis": {
+      "oneClick":              false,
+      "allowToChangeInstallationDirectory": true,
+      "allowElevation":        true,
+      "installerIcon":         "build/icon.ico",
+      "uninstallerIcon":       "build/icon.ico",
+      "installerHeaderIcon":   "build/icon.ico",
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName":          "TimeTracker",
+      "include":               "build/installer.nsh",
+      "deleteAppDataOnUninstall": false
+    },
+
+    "portable": {
+      "artifactName": "TimeTracker-${version}-portable.exe"
+    },
+
+    "publish": {
+      "provider": "github",
+      "owner": "WaterhouseA-Programming",
+      "repo": "timetracker"
+    }
+  },
+  "dependencies": {
+    "electron-updater": "^6.1.7"
+  },
+  "devDependencies": {
+    "electron":         "^28.0.0",
+    "electron-builder": "^24.0.0"
+  }
+}
