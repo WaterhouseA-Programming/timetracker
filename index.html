@@ -1,0 +1,836 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="theme-color" content="#0d0d0d" id="meta-theme-color">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Nimble Panda">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon.svg">
+<title>Nimble Panda — Tasks</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#0d0d0d; --surface:#161616; --surface2:#1e1e1e; --surface3:#272727;
+  --border:#2a2a2a; --accent:#e8ff47; --brand:#f5a32a; --red:#ff4757;
+  --text:#f0f0f0; --text2:#888; --muted:#444; --green:#47ff8a; --blue:#47c8ff;
+  --radius:10px; --radius-sm:7px; --shadow:0 4px 20px rgba(0,0,0,.5);
+}
+[data-theme="light"] {
+  --bg:#f3f4f6; --surface:#fff; --surface2:#f8f9fa; --surface3:#eef0f2;
+  --border:#e4e6e9; --text:#111827; --text2:#6b7280; --muted:#9ca3af;
+  --shadow:0 4px 20px rgba(0,0,0,.08);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html{-webkit-text-size-adjust:100%}
+body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100dvh;overscroll-behavior-y:contain}
+
+/* ── Header ── */
+header{display:flex;align-items:center;justify-content:space-between;padding:0 16px;height:58px;background:var(--surface);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:20}
+.logo-wrap{display:flex;align-items:center;gap:10px}
+.logo-icon{width:36px;height:36px;flex-shrink:0}
+.logo-name{font-size:14px;font-weight:800;letter-spacing:-.3px;line-height:1.2}
+.logo-name .orange{color:var(--brand)}
+.logo-sub{font-size:10px;color:var(--text2);font-weight:500;letter-spacing:.06em;text-transform:uppercase}
+.hdr-right{display:flex;align-items:center;gap:8px}
+.status-pill{display:flex;align-items:center;gap:5px;padding:5px 10px;border-radius:20px;background:var(--surface2);border:1px solid var(--border);font-size:11px;color:var(--text2);font-weight:500}
+.status-dot{width:6px;height:6px;border-radius:50%;background:var(--muted);transition:all .3s}
+.status-dot.on{background:var(--green);box-shadow:0 0 6px var(--green)}
+.status-dot.err{background:var(--red);box-shadow:0 0 6px var(--red)}
+.icon-btn{width:36px;height:36px;border-radius:9px;border:1px solid var(--border);background:var(--surface2);color:var(--text2);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:17px;transition:all .15s;flex-shrink:0}
+.icon-btn:hover{background:var(--surface3);color:var(--text)}
+.icon-btn:active{transform:scale(.92)}
+
+/* ── Main ── */
+main{padding:14px 14px 96px;max-width:900px;margin:0 auto}
+
+/* ── Setup ── */
+.setup-wrap{min-height:calc(100dvh - 58px);display:flex;align-items:center;justify-content:center;padding:20px}
+.setup-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:28px;width:100%;max-width:440px;box-shadow:var(--shadow)}
+.setup-logo{display:flex;align-items:center;gap:10px;margin-bottom:22px}
+.setup-logo .logo-icon{width:44px;height:44px}
+.setup-logo .logo-name{font-size:16px}
+.setup-card h2{font-size:15px;font-weight:700;margin-bottom:6px}
+.setup-card p{font-size:12px;color:var(--text2);line-height:1.7;margin-bottom:20px}
+.cfg-area{width:100%;padding:10px 12px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-family:'Plus Jakarta Sans',sans-serif;font-size:11px;outline:none;resize:vertical;line-height:1.5;transition:border-color .15s;min-height:120px}
+.cfg-area:focus{border-color:var(--accent)}
+.error-msg{font-size:11px;color:var(--red);margin-top:8px;display:none;line-height:1.5}
+
+/* ── Buttons ── */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:9px 18px;border-radius:var(--radius-sm);border:1px solid var(--border);font-family:'Plus Jakarta Sans',sans-serif;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;white-space:nowrap}
+.btn-primary{background:var(--accent);color:#000;border-color:var(--accent)}
+.btn-primary:hover{opacity:.88}
+.btn-primary:active{transform:scale(.97)}
+.btn-ghost{background:transparent;color:var(--text2)}
+.btn-ghost:hover{color:var(--text);background:var(--surface2)}
+.btn-sm{padding:6px 12px;font-size:11px}
+
+/* ── Sync banner ── */
+.sync-banner{background:rgba(255,71,87,.08);border:1px solid rgba(255,71,87,.25);border-radius:var(--radius-sm);padding:10px 14px;font-size:11px;color:var(--red);margin-bottom:14px;display:none;line-height:1.5}
+
+/* ── Toolbar ── */
+.toolbar{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap}
+.toolbar select{flex:1;min-width:0;padding:8px 10px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-family:'Plus Jakarta Sans',sans-serif;font-size:12px;outline:none;-webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' fill='none'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23888' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;padding-right:28px}
+.toolbar select:focus{border-color:var(--accent)}
+
+/* ── Columns ── */
+.cols{display:flex;flex-direction:column;gap:20px}
+@media(min-width:640px){.cols{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}}
+@media(min-width:640px) and (max-width:860px){.cols{grid-template-columns:1fr 1fr}}
+.col{display:flex;flex-direction:column;gap:8px}
+.col-hdr{padding:8px 12px;border-radius:var(--radius-sm);background:var(--surface);border:1px solid var(--border);font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--text2);font-weight:700;display:flex;align-items:center;gap:7px;position:sticky;top:58px;z-index:5}
+.col-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.col-count{margin-left:auto;padding:1px 7px;border-radius:10px;background:var(--surface2);border:1px solid var(--border);font-size:10px;color:var(--text2)}
+
+/* ── Task card ── */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;transition:border-color .15s,transform .12s,box-shadow .15s;position:relative;overflow:hidden;cursor:default;touch-action:none}
+.card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;border-radius:2px 0 0 2px}
+.card.todo::before{background:var(--muted)}
+.card.inprogress::before{background:var(--blue)}
+.card.done::before{background:var(--green)}
+.card:hover{border-color:var(--surface3);transform:translateY(-1px);box-shadow:var(--shadow)}
+.card:active{transform:translateY(0);box-shadow:none}
+.card.dragging{opacity:.2;transform:none!important;box-shadow:none!important}
+.card-title{font-size:12px;font-weight:500;line-height:1.5;margin-bottom:4px;padding-left:9px}
+.card-title.done{opacity:.38;text-decoration:line-through}
+.card-meta{font-size:10px;color:var(--text2);margin-bottom:10px;padding-left:9px}
+.card-actions{display:flex;gap:5px;padding-left:9px;flex-wrap:wrap}
+.card-btn{padding:4px 10px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--text2);font-family:'Plus Jakarta Sans',sans-serif;font-size:10px;font-weight:500;cursor:pointer;transition:all .12s}
+.card-btn:hover{color:var(--text);border-color:var(--surface3);background:var(--surface2)}
+.card-btn:active{transform:scale(.94)}
+.card-btn.advance{color:var(--accent);border-color:rgba(232,255,71,.3)}
+.card-btn.advance:hover{background:var(--accent);color:#000;border-color:var(--accent)}
+.card-btn.del{margin-left:auto}
+.card-btn.del:hover{color:var(--red);border-color:rgba(255,71,87,.35)}
+
+/* ── Drag ghost ── */
+.drag-ghost{position:fixed;pointer-events:none;z-index:1000;transform:rotate(2deg) scale(1.04);box-shadow:0 10px 35px rgba(0,0,0,.6);border-radius:var(--radius);opacity:.92;transition:none}
+.col.drop-zone{transition:all .15s}
+.col.drag-over{outline:2px dashed rgba(232,255,71,.45);outline-offset:3px;border-radius:var(--radius);background:rgba(232,255,71,.04)}
+
+/* ── Add task shortcut ── */
+.add-task-btn{padding:10px;border:1px dashed var(--border);border-radius:var(--radius);background:transparent;color:var(--muted);font-size:11px;font-family:'Plus Jakarta Sans',sans-serif;cursor:pointer;text-align:center;transition:all .15s;width:100%}
+.add-task-btn:hover{border-color:var(--surface3);color:var(--text2);background:var(--surface)}
+
+/* ── Empty state ── */
+.empty{text-align:center;padding:28px 12px;color:var(--muted);font-size:11px;line-height:1.6}
+.empty-icon{font-size:26px;margin-bottom:6px}
+
+/* ── FAB ── */
+.fab{position:fixed;bottom:26px;right:20px;z-index:30;width:54px;height:54px;border-radius:50%;background:var(--accent);color:#000;font-size:26px;line-height:1;border:none;cursor:pointer;box-shadow:0 4px 18px rgba(232,255,71,.4);display:flex;align-items:center;justify-content:center;transition:all .18s;font-family:system-ui}
+.fab:hover{transform:scale(1.06);box-shadow:0 6px 24px rgba(232,255,71,.5)}
+.fab:active{transform:scale(.94)}
+
+/* ── Pull to refresh ── */
+#ptr{position:fixed;top:0;left:0;right:0;height:52px;display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--text2);background:var(--surface);border-bottom:1px solid var(--border);transform:translateY(-52px);transition:transform .25s ease;z-index:50}
+#ptr.visible{transform:translateY(0)}
+#ptr.spinning span{display:inline-block;animation:spin .65s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── Modals ── */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.72);display:flex;align-items:flex-end;justify-content:center;z-index:100;backdrop-filter:blur(4px);padding:0}
+@media(min-width:480px){.overlay{align-items:center;padding:16px}}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:16px 16px 0 0;padding:8px 20px 36px;width:100%;max-width:420px;animation:slideUp .22s ease}
+@media(min-width:480px){.modal{border-radius:14px;padding:24px;animation:pop .18s ease}}
+.modal-tall{max-height:80dvh;overflow-y:auto}
+@keyframes slideUp{from{transform:translateY(60px);opacity:0}to{transform:none;opacity:1}}
+@keyframes pop{from{opacity:0;transform:scale(.95)}to{opacity:1;transform:none}}
+.modal-handle{width:36px;height:4px;background:var(--border);border-radius:2px;margin:8px auto 16px}
+@media(min-width:480px){.modal-handle{display:none}}
+.modal-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.modal-hdr h3{font-size:15px;font-weight:700}
+.modal h3{font-size:15px;font-weight:700;margin-bottom:16px}
+.field{margin-bottom:13px}
+.field label{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--text2);margin-bottom:5px;font-weight:600}
+.field input,.field select,.field textarea{width:100%;padding:9px 12px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-family:'Plus Jakarta Sans',sans-serif;font-size:13px;outline:none;transition:border-color .15s;-webkit-appearance:none;appearance:none}
+.field select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' fill='none'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23888' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:30px}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--accent)}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:18px}
+
+/* ── Manage panel ── */
+.manage-section-title{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);font-weight:700;margin:14px 0 8px;padding-top:14px;border-top:1px solid var(--border)}
+.manage-section-title:first-child{margin-top:0;padding-top:0;border-top:none}
+.manage-cust{margin-bottom:12px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm)}
+.manage-cust-hdr{padding:10px 12px;display:flex;align-items:center;gap:8px}
+.manage-cust-name{font-size:12px;font-weight:700;flex:1}
+.manage-projects{padding:0 12px 8px}
+.manage-proj{display:flex;align-items:center;gap:6px;padding:6px 0;border-top:1px solid var(--border)}
+.manage-proj-name{font-size:11px;color:var(--text2);flex:1}
+.manage-add-proj{display:flex;gap:6px;padding:8px 0 2px;border-top:1px solid var(--border)}
+.manage-add-proj input{flex:1;padding:7px 10px;font-size:12px}
+.add-cust-row{display:flex;gap:8px;margin-top:8px;padding-top:14px;border-top:1px solid var(--border)}
+.add-cust-row input{flex:1;padding:9px 12px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-family:'Plus Jakarta Sans',sans-serif;font-size:13px;outline:none;transition:border-color .15s}
+.add-cust-row input:focus{border-color:var(--accent)}
+
+/* ── Settings drawer ── */
+.drawer-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:200;opacity:0;pointer-events:none;transition:opacity .24s;backdrop-filter:blur(2px)}
+.drawer-overlay.open{opacity:1;pointer-events:all}
+.drawer{position:fixed;top:0;right:0;bottom:0;width:290px;max-width:82vw;background:var(--surface);border-left:1px solid var(--border);z-index:201;transform:translateX(100%);transition:transform .28s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column}
+.drawer.open{transform:translateX(0)}
+.drawer-hdr{display:flex;align-items:center;justify-content:space-between;padding:18px 18px 14px;border-bottom:1px solid var(--border);flex-shrink:0}
+.drawer-hdr h2{font-size:14px;font-weight:700}
+.drawer-close-btn{width:28px;height:28px;border-radius:6px;background:var(--surface2);border:1px solid var(--border);color:var(--text2);cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;transition:all .12s}
+.drawer-close-btn:hover{background:var(--surface3);color:var(--text)}
+.drawer-body{padding:18px;flex:1;overflow-y:auto}
+.drawer-footer{padding:14px 18px;border-top:1px solid var(--border);font-size:10px;color:var(--muted);flex-shrink:0;line-height:1.6}
+.section-title{font-size:9px;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);font-weight:700;margin-bottom:10px;margin-top:18px}
+.section-title:first-child{margin-top:0}
+.setting-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)}
+.setting-row:last-child{border-bottom:none}
+.setting-label{font-size:12px;font-weight:500}
+.setting-sub{font-size:10px;color:var(--text2);margin-top:2px}
+.toggle{position:relative;width:44px;height:25px;flex-shrink:0}
+.toggle input{opacity:0;width:0;height:0}
+.toggle-track{position:absolute;inset:0;border-radius:13px;background:var(--surface3);cursor:pointer;transition:background .2s;border:1px solid var(--border)}
+.toggle input:checked+.toggle-track{background:var(--accent);border-color:var(--accent)}
+.toggle-track::after{content:'';position:absolute;width:19px;height:19px;border-radius:50%;background:var(--text2);top:2px;left:2px;transition:transform .2s}
+.toggle input:checked+.toggle-track::after{transform:translateX(19px);background:#000}
+.drawer-action-btn{width:100%;padding:10px 14px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface2);color:var(--text);font-family:'Plus Jakarta Sans',sans-serif;font-size:12px;font-weight:600;cursor:pointer;text-align:left;transition:all .15s;display:flex;align-items:center;gap:9px;margin-bottom:8px}
+.drawer-action-btn:hover{background:var(--surface3)}
+.drawer-action-btn:active{transform:scale(.98)}
+.drawer-action-btn .btn-icon{font-size:15px}
+
+/* ── Quick-action bar (visible below toolbar) ── */
+.quick-bar{display:flex;gap:8px;margin-bottom:14px}
+.quick-btn{display:flex;align-items:center;justify-content:center;gap:6px;padding:8px 12px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);font-family:'Plus Jakarta Sans',sans-serif;font-size:11px;font-weight:600;color:var(--text2);cursor:pointer;transition:all .15s;white-space:nowrap}
+.quick-btn:hover{background:var(--surface2);color:var(--text);border-color:var(--brand)}
+.quick-btn:active{transform:scale(.96)}
+.quick-btn-manage{flex:1}
+.quick-btn-settings{flex:0 0 auto;color:var(--text2)}
+</style>
+</head>
+<body>
+
+<!-- ── Settings drawer ── -->
+<div class="drawer-overlay" id="drawer-overlay" onclick="closeDrawer()"></div>
+<div class="drawer" id="settings-drawer">
+  <div class="drawer-hdr">
+    <h2>Settings</h2>
+    <button class="drawer-close-btn" onclick="closeDrawer()">✕</button>
+  </div>
+  <div class="drawer-body">
+    <div class="section-title">Appearance</div>
+    <div class="setting-row">
+      <div>
+        <div class="setting-label">Light mode</div>
+        <div class="setting-sub">Toggle dark / light theme</div>
+      </div>
+      <label class="toggle">
+        <input type="checkbox" id="theme-toggle" onchange="applyTheme(this.checked)">
+        <span class="toggle-track"></span>
+      </label>
+    </div>
+
+    <div class="section-title">Data</div>
+    <button class="drawer-action-btn" onclick="openManagePanel()">
+      <span class="btn-icon">🏢</span> Customers &amp; Projects
+    </button>
+    <button class="drawer-action-btn" onclick="drawerRefresh()">
+      <span class="btn-icon">↻</span> Refresh now
+    </button>
+
+    <div class="section-title">Firebase</div>
+    <button class="drawer-action-btn" onclick="drawerReconnect()">
+      <span class="btn-icon">🔄</span> Reconnect / Change project
+    </button>
+    <button class="drawer-action-btn" onclick="drawerClear()">
+      <span class="btn-icon">🗑️</span> Clear saved config
+    </button>
+  </div>
+  <div class="drawer-footer">
+    Nimble Panda — Task Board<br>
+    Synced via Firebase Firestore
+  </div>
+</div>
+
+<!-- ── Pull to refresh ── -->
+<div id="ptr"><span>↻</span>&nbsp; Release to refresh</div>
+
+<!-- ── Header ── -->
+<header>
+  <div class="logo-wrap">
+    <svg class="logo-icon" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="22" cy="22" r="16" fill="#1a1a1a"/>
+      <circle cx="78" cy="22" r="16" fill="#1a1a1a"/>
+      <circle cx="50" cy="56" r="38" fill="white" stroke="#1a1a1a" stroke-width="3.5"/>
+      <ellipse cx="34" cy="46" rx="13" ry="11" fill="#1a1a1a" transform="rotate(-5,34,46)"/>
+      <ellipse cx="66" cy="46" rx="13" ry="11" fill="#1a1a1a" transform="rotate(5,66,46)"/>
+      <path d="M25 47 Q34 40 43 47" stroke="white" stroke-width="3" fill="none" stroke-linecap="round"/>
+      <circle cx="66" cy="46" r="6" fill="white"/>
+      <circle cx="67" cy="46" r="3.8" fill="#1a1a1a"/>
+      <circle cx="68.5" cy="44.5" r="1.3" fill="white"/>
+      <ellipse cx="50" cy="63" rx="5.5" ry="4" fill="#1a1a1a"/>
+      <path d="M44 70 Q50 76 56 70" stroke="#aaa" stroke-width="2" fill="none" stroke-linecap="round"/>
+    </svg>
+    <div>
+      <div class="logo-name"><span class="orange">Nimble</span> Panda</div>
+      <div class="logo-sub">Task Board</div>
+    </div>
+  </div>
+  <div class="hdr-right">
+    <div class="status-pill">
+      <div class="status-dot" id="sdot"></div>
+      <span id="stext">Connecting…</span>
+    </div>
+    <button class="icon-btn" onclick="openDrawer()" title="Settings">⚙</button>
+  </div>
+</header>
+
+<main>
+  <!-- Setup panel -->
+  <div id="setup-panel" style="display:none">
+    <div class="setup-wrap">
+      <div class="setup-card">
+        <div class="setup-logo">
+          <svg class="logo-icon" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="22" cy="22" r="16" fill="#1a1a1a"/>
+            <circle cx="78" cy="22" r="16" fill="#1a1a1a"/>
+            <circle cx="50" cy="56" r="38" fill="white" stroke="#1a1a1a" stroke-width="3.5"/>
+            <ellipse cx="34" cy="46" rx="13" ry="11" fill="#1a1a1a" transform="rotate(-5,34,46)"/>
+            <ellipse cx="66" cy="46" rx="13" ry="11" fill="#1a1a1a" transform="rotate(5,66,46)"/>
+            <path d="M25 47 Q34 40 43 47" stroke="white" stroke-width="3" fill="none" stroke-linecap="round"/>
+            <circle cx="66" cy="46" r="6" fill="white"/>
+            <circle cx="67" cy="46" r="3.8" fill="#1a1a1a"/>
+            <circle cx="68.5" cy="44.5" r="1.3" fill="white"/>
+            <ellipse cx="50" cy="63" rx="5.5" ry="4" fill="#1a1a1a"/>
+            <path d="M44 70 Q50 76 56 70" stroke="#aaa" stroke-width="2" fill="none" stroke-linecap="round"/>
+          </svg>
+          <div>
+            <div class="logo-name"><span class="orange">Nimble</span> Panda</div>
+            <div class="logo-sub">Task Board</div>
+          </div>
+        </div>
+        <h2>Connect Firebase</h2>
+        <p>Paste your Firebase config JSON to sync tasks across all your devices. Same config as the desktop app — only needed once per device.</p>
+        <div class="field">
+          <label>Firebase Config JSON</label>
+          <textarea class="cfg-area" id="cfg-input" rows="7"
+            placeholder='{
+  "apiKey": "...",
+  "authDomain": "...",
+  "projectId": "...",
+  "storageBucket": "...",
+  "messagingSenderId": "...",
+  "appId": "..."
+}'></textarea>
+        </div>
+        <button class="btn btn-primary" onclick="connect()">Connect</button>
+        <div class="error-msg" id="cfg-error"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Board -->
+  <div id="board" style="display:none">
+    <div class="sync-banner" id="sync-banner"></div>
+    <div class="toolbar">
+      <select id="f-cust" onchange="onFilterChange()"><option value="">All Customers</option></select>
+      <select id="f-proj" onchange="renderBoard()"><option value="">All Projects</option></select>
+    </div>
+    <div class="quick-bar">
+      <button class="quick-btn quick-btn-manage" onclick="openManagePanel()">🏢 Customers &amp; Projects</button>
+      <button class="quick-btn quick-btn-settings" onclick="openDrawer()">⚙ Settings</button>
+    </div>
+    <div class="cols" id="cols"></div>
+  </div>
+</main>
+
+<!-- FAB -->
+<button class="fab" id="fab" onclick="openAddModal()" style="display:none" title="Add task">+</button>
+
+<!-- Add / Edit task modal -->
+<div class="overlay" id="modal" style="display:none" onclick="closeModal(event)">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-handle"></div>
+    <h3 id="modal-title">Add Task</h3>
+    <div class="field">
+      <label>Task Title</label>
+      <input type="text" id="m-title" placeholder="e.g. Fix login bug"
+             autocorrect="on" autocapitalize="sentences" spellcheck="true"
+             onkeydown="if(event.key==='Enter')saveTask()">
+    </div>
+    <div class="field">
+      <label>Customer</label>
+      <select id="m-cust" onchange="populateModalProjects()"></select>
+    </div>
+    <div class="field">
+      <label>Project</label>
+      <select id="m-proj"></select>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" id="modal-save-btn" onclick="saveTask()">Add Task</button>
+    </div>
+  </div>
+</div>
+
+<!-- Manage customers/projects modal -->
+<div class="overlay" id="manage-overlay" style="display:none" onclick="closeManage(event)">
+  <div class="modal modal-tall" onclick="event.stopPropagation()">
+    <div class="modal-handle"></div>
+    <div class="modal-hdr">
+      <h3>Customers &amp; Projects</h3>
+      <button class="icon-btn" style="width:28px;height:28px;font-size:13px" onclick="closeManage()">✕</button>
+    </div>
+    <div id="manage-list"></div>
+    <!-- Add customer -->
+    <div class="add-cust-row">
+      <input type="text" id="new-cust-input" placeholder="New customer name…"
+             autocorrect="on" autocapitalize="words" spellcheck="true"
+             onkeydown="if(event.key==='Enter')addCustomer()">
+      <button class="btn btn-primary btn-sm" onclick="addCustomer()">+ Customer</button>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp, getApps } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+import {
+  getFirestore, collection, onSnapshot, addDoc, updateDoc,
+  deleteDoc, doc, serverTimestamp, query, orderBy
+} from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+
+// ── State ──────────────────────────────────────────────────────────────────────
+let db          = null;
+let customers   = [];
+let allProjects = [];
+let tasks       = [];
+let editingTaskId = null;
+
+const STATUSES = [
+  { id:'todo',       label:'To Do',       color:'#555'    },
+  { id:'inprogress', label:'In Progress', color:'#47c8ff' },
+  { id:'done',       label:'Done',        color:'#47ff8a' },
+];
+
+// ── Config ────────────────────────────────────────────────────────────────────
+function loadCfg()  { try { return JSON.parse(localStorage.getItem('tt_fb_config')); } catch { return null; } }
+function saveCfg(c) { localStorage.setItem('tt_fb_config', JSON.stringify(c)); }
+
+// ── Theme ─────────────────────────────────────────────────────────────────────
+window.applyTheme = function(light) {
+  document.documentElement.setAttribute('data-theme', light ? 'light' : 'dark');
+  document.getElementById('meta-theme-color').setAttribute('content', light ? '#f3f4f6' : '#0d0d0d');
+  localStorage.setItem('tt_theme', light ? 'light' : 'dark');
+  document.getElementById('theme-toggle').checked = light;
+};
+applyTheme(localStorage.getItem('tt_theme') === 'light');
+
+// ── Drawer ────────────────────────────────────────────────────────────────────
+window.openDrawer  = () => { document.getElementById('settings-drawer').classList.add('open'); document.getElementById('drawer-overlay').classList.add('open'); };
+window.closeDrawer = () => { document.getElementById('settings-drawer').classList.remove('open'); document.getElementById('drawer-overlay').classList.remove('open'); };
+window.drawerRefresh   = () => { closeDrawer(); if (db) { setStatus(null,'Refreshing…'); subscribeAll(); } };
+window.drawerReconnect = () => { closeDrawer(); showSetup(); };
+window.drawerClear     = () => {
+  if (!confirm('Remove saved Firebase config from this device?')) return;
+  localStorage.removeItem('tt_fb_config'); db = null;
+  closeDrawer(); showSetup();
+};
+window.openManagePanel = () => { closeDrawer(); openManage(); };
+
+window.showSetup = function() {
+  document.getElementById('board').style.display       = 'none';
+  document.getElementById('fab').style.display         = 'none';
+  document.getElementById('setup-panel').style.display = 'block';
+  setStatus(false);
+};
+
+// ── Connect ───────────────────────────────────────────────────────────────────
+window.connect = async function() {
+  const raw   = document.getElementById('cfg-input').value.trim();
+  const errEl = document.getElementById('cfg-error');
+  errEl.style.display = 'none';
+  let cfg;
+  try {
+    cfg = JSON.parse(raw);
+    if (!cfg.projectId) throw new Error('Missing projectId');
+  } catch {
+    errEl.textContent   = 'Invalid JSON — paste the full config object with quoted keys';
+    errEl.style.display = 'block';
+    return;
+  }
+  saveCfg(cfg);
+  await initBoard(cfg);
+};
+
+async function initBoard(cfg) {
+  try {
+    const existing = getApps();
+    const app = existing.length ? existing[0] : initializeApp(cfg);
+    db = getFirestore(app);
+    setStatus(true);
+    document.getElementById('setup-panel').style.display = 'none';
+    document.getElementById('board').style.display       = 'block';
+    document.getElementById('fab').style.display         = 'flex';
+    subscribeAll();
+  } catch(e) {
+    setStatus(false, e.message);
+  }
+}
+
+// ── Subscriptions ─────────────────────────────────────────────────────────────
+function showSyncError(msg) {
+  setStatus(false, msg);
+  const b = document.getElementById('sync-banner');
+  if (b) { b.textContent = '⚠️ ' + msg; b.style.display = 'block'; }
+}
+
+function subscribeAll() {
+  document.getElementById('sync-banner').style.display = 'none';
+
+  onSnapshot(collection(db,'customers'), snap => {
+    const cMap = {};
+    snap.docs.forEach(d => { cMap[d.id] = { id:d.id, ...d.data(), projects:[] }; });
+    allProjects.forEach(p => { if (cMap[p.customerId]) cMap[p.customerId].projects.push(p); });
+    customers = Object.values(cMap).sort((a,b) => a.name.localeCompare(b.name));
+    populateFilters(); renderBoard(); renderManageList();
+  }, err => showSyncError('Customers: ' + err.message));
+
+  onSnapshot(collection(db,'projects'), snap => {
+    allProjects = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+    customers.forEach(c => { c.projects = allProjects.filter(p => p.customerId === c.id); });
+    populateFilters(); renderBoard(); renderManageList();
+  }, err => showSyncError('Projects: ' + err.message));
+
+  onSnapshot(query(collection(db,'tasks'), orderBy('createdAt','asc')), snap => {
+    tasks = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+    renderBoard();
+  }, () => {
+    onSnapshot(collection(db,'tasks'), snap => {
+      tasks = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+      renderBoard();
+    }, err2 => showSyncError('Tasks: ' + err2.message));
+  });
+}
+
+// ── Filters ───────────────────────────────────────────────────────────────────
+function populateFilters() {
+  const cs  = document.getElementById('f-cust');
+  const cur = cs.value;
+  cs.innerHTML = '<option value="">All Customers</option>' +
+    customers.map(c => `<option value="${c.id}"${c.id===cur?' selected':''}>${esc(c.name)}</option>`).join('');
+  populateProjFilter();
+}
+
+function populateProjFilter() {
+  const cc  = document.getElementById('f-cust').value;
+  const ps  = document.getElementById('f-proj');
+  const cur = ps.value;
+  const projs = cc ? (customers.find(c=>c.id===cc)?.projects||[]) : allProjects;
+  ps.innerHTML = '<option value="">All Projects</option>' +
+    projs.map(p => `<option value="${p.id}"${p.id===cur?' selected':''}>${esc(p.name)}</option>`).join('');
+}
+
+window.onFilterChange = function() { populateProjFilter(); renderBoard(); };
+
+// ── Render board ──────────────────────────────────────────────────────────────
+function renderBoard() {
+  const cc = document.getElementById('f-cust')?.value || '';
+  const cp = document.getElementById('f-proj')?.value  || '';
+  let filtered = tasks;
+  if (cc) filtered = filtered.filter(t => t.customerId === cc);
+  if (cp) filtered = filtered.filter(t => t.projectId  === cp);
+
+  const noProjects = !allProjects.length;
+  document.getElementById('cols').innerHTML = STATUSES.map(s => {
+    const col = filtered.filter(t => t.status === s.id);
+    const cards = col.length
+      ? col.map(t => cardHtml(t)).join('')
+      : s.id === 'todo' && noProjects
+        ? `<div class="empty"><div class="empty-icon">👋</div>Add customers &amp; projects<br>via Settings → Customers &amp; Projects</div>`
+        : `<div class="empty"><div class="empty-icon">·</div>No tasks</div>`;
+    const addBtns = s.id === 'todo' ? addButtons(cc, cp) : '';
+    return `<div class="col" data-status="${s.id}">
+      <div class="col-hdr">
+        <span class="col-dot" style="background:${s.color}"></span>
+        ${s.label}
+        <span class="col-count">${col.length}</span>
+      </div>
+      ${cards}
+      ${addBtns}
+    </div>`;
+  }).join('');
+
+  setStatus(true);
+}
+
+function cardHtml(t) {
+  const done    = t.status === 'done';
+  const next    = t.status === 'todo' ? 'inprogress' : 'done';
+  const nextLbl = t.status === 'todo' ? '→ In Progress' : '✓ Done';
+  return `<div class="card ${t.status}" data-id="${t.id}" data-status="${t.status}">
+    <div class="card-title${done?' done':''}">${esc(t.title)}</div>
+    <div class="card-meta">${esc(t.customerName||'')} › ${esc(t.projectName||'')}</div>
+    <div class="card-actions">
+      ${!done ? `<button class="card-btn advance" onclick="advance('${t.id}','${next}')">${nextLbl}</button>` : ''}
+      ${done  ? `<button class="card-btn" onclick="advance('${t.id}','todo')">↺ Reopen</button>` : ''}
+      <button class="card-btn" onclick='openEditModal(${JSON.stringify(t)})'>✎ Edit</button>
+      <button class="card-btn del" onclick="removeTask('${t.id}')">✕</button>
+    </div>
+  </div>`;
+}
+
+function addButtons(cc, cp) {
+  const visible = cc
+    ? (cp ? allProjects.filter(p=>p.id===cp) : allProjects.filter(p=>p.customerId===cc))
+    : allProjects;
+  if (!visible.length) return `<button class="add-task-btn" onclick="openAddModal()">+ Add task</button>`;
+  return visible.slice(0,3).map(p => {
+    const c = customers.find(x => x.id === p.customerId);
+    return `<button class="add-task-btn" onclick='openAddModal("${p.customerId}","${p.id}")'>
+      + ${esc(c?.name||'')} › ${esc(p.name)}</button>`;
+  }).join('') + (visible.length > 3 ? `<button class="add-task-btn" onclick="openAddModal()">+ More…</button>` : '');
+}
+
+// ── Task CRUD ─────────────────────────────────────────────────────────────────
+window.advance    = async (id, status) => { await updateDoc(doc(db,'tasks',id), { status }); };
+window.removeTask = async (id) => { await deleteDoc(doc(db,'tasks',id)); };
+
+// ── Add / Edit modal ──────────────────────────────────────────────────────────
+window.openAddModal = function(presetCustId, presetProjId) {
+  editingTaskId = null;
+  document.getElementById('modal-title').textContent    = 'Add Task';
+  document.getElementById('modal-save-btn').textContent = 'Add Task';
+  const cs = document.getElementById('m-cust');
+  cs.innerHTML = customers.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('');
+  if (presetCustId) cs.value = presetCustId;
+  populateModalProjects();
+  if (presetProjId) document.getElementById('m-proj').value = presetProjId;
+  document.getElementById('m-title').value = '';
+  document.getElementById('modal').style.display = 'flex';
+  setTimeout(() => document.getElementById('m-title').focus(), 80);
+};
+
+window.openEditModal = function(t) {
+  editingTaskId = t.id;
+  document.getElementById('modal-title').textContent    = 'Edit Task';
+  document.getElementById('modal-save-btn').textContent = 'Save Changes';
+  const cs = document.getElementById('m-cust');
+  cs.innerHTML = customers.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('');
+  cs.value = t.customerId;
+  populateModalProjects();
+  document.getElementById('m-proj').value  = t.projectId;
+  document.getElementById('m-title').value = t.title;
+  document.getElementById('modal').style.display = 'flex';
+  setTimeout(() => document.getElementById('m-title').focus(), 80);
+};
+
+window.populateModalProjects = function() {
+  const cid = document.getElementById('m-cust').value;
+  document.getElementById('m-proj').innerHTML =
+    allProjects.filter(p => p.customerId === cid)
+               .map(p => `<option value="${p.id}">${esc(p.name)}</option>`).join('');
+};
+
+window.closeModal = function(e) {
+  if (!e || e.target === document.getElementById('modal'))
+    document.getElementById('modal').style.display = 'none';
+};
+
+window.saveTask = async function() {
+  const title = document.getElementById('m-title').value.trim();
+  if (!title) { document.getElementById('m-title').focus(); return; }
+  const cid  = document.getElementById('m-cust').value;
+  const pid  = document.getElementById('m-proj').value;
+  const cust = customers.find(c => c.id === cid);
+  const proj = allProjects.find(p => p.id === pid);
+  if (!cust || !proj) return;
+  document.getElementById('modal').style.display = 'none';
+
+  if (editingTaskId) {
+    await updateDoc(doc(db,'tasks',editingTaskId), {
+      title, customerId: cid, customerName: cust.name,
+      projectId: pid, projectName: proj.name,
+    });
+    editingTaskId = null;
+  } else {
+    await addDoc(collection(db,'tasks'), {
+      title, status:'todo',
+      customerId:cid, customerName:cust.name,
+      projectId:pid,  projectName:proj.name,
+      createdAt: serverTimestamp(),
+    });
+  }
+};
+
+// ── Manage customers/projects ─────────────────────────────────────────────────
+function openManage() {
+  renderManageList();
+  document.getElementById('manage-overlay').style.display = 'flex';
+}
+
+window.closeManage = function(e) {
+  if (!e || e.target === document.getElementById('manage-overlay'))
+    document.getElementById('manage-overlay').style.display = 'none';
+};
+
+function renderManageList() {
+  const el = document.getElementById('manage-list');
+  if (!el) return;
+  if (!customers.length) {
+    el.innerHTML = `<div class="empty"><div class="empty-icon">🏢</div>No customers yet — add one below</div>`;
+    return;
+  }
+  el.innerHTML = customers.map(c => `
+    <div class="manage-cust">
+      <div class="manage-cust-hdr">
+        <div class="manage-cust-name">${esc(c.name)}</div>
+      </div>
+      <div class="manage-projects">
+        ${(c.projects||[]).map(p => `
+          <div class="manage-proj">
+            <span class="manage-proj-name">› ${esc(p.name)}</span>
+          </div>
+        `).join('')}
+        <div class="manage-add-proj">
+          <input type="text" id="proj-input-${c.id}" placeholder="New project…"
+                 autocorrect="on" autocapitalize="words" spellcheck="true"
+                 onkeydown="if(event.key==='Enter')addProject('${c.id}')">
+          <button class="btn btn-primary btn-sm" onclick="addProject('${c.id}')">Add</button>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+window.addCustomer = async function() {
+  const inp  = document.getElementById('new-cust-input');
+  const name = inp.value.trim();
+  if (!name || !db) return;
+  inp.value = '';
+  await addDoc(collection(db,'customers'), { name });
+};
+
+window.addProject = async function(custId) {
+  const inp  = document.getElementById(`proj-input-${custId}`);
+  const name = inp?.value.trim();
+  if (!name || !db) return;
+  inp.value = '';
+  await addDoc(collection(db,'projects'), { name, customerId: custId });
+};
+
+// ── Status indicator ──────────────────────────────────────────────────────────
+function setStatus(on, msg) {
+  const dot  = document.getElementById('sdot');
+  const text = document.getElementById('stext');
+  if (on === true)        { dot.className = 'status-dot on';  text.textContent = 'Synced'; }
+  else if (on === false)  { dot.className = 'status-dot err'; text.textContent = msg || 'Disconnected'; }
+  else                    { dot.className = 'status-dot';     text.textContent = msg || 'Connecting…'; }
+}
+
+// ── Pull to refresh ───────────────────────────────────────────────────────────
+(function() {
+  let startY = 0, pulling = false;
+  const ptr = document.getElementById('ptr');
+  document.addEventListener('touchstart', e => {
+    if (window.scrollY === 0) { startY = e.touches[0].clientY; pulling = true; }
+  }, { passive: true });
+  document.addEventListener('touchmove', e => {
+    if (pulling && e.touches[0].clientY - startY > 10) ptr.classList.add('visible');
+  }, { passive: true });
+  document.addEventListener('touchend', e => {
+    if (!pulling) return;
+    pulling = false;
+    if (e.changedTouches[0].clientY - startY > 72 && db) {
+      ptr.classList.add('spinning');
+      subscribeAll();
+      setTimeout(() => ptr.classList.remove('visible','spinning'), 1200);
+    } else { ptr.classList.remove('visible'); }
+  }, { passive: true });
+})();
+
+// ── Touch drag and drop ───────────────────────────────────────────────────────
+const _drag = { active:false, id:null, status:null, card:null, ghost:null, startY:0, timer:null };
+
+document.addEventListener('touchstart', e => {
+  const card = e.target.closest('.card');
+  if (!card || e.target.closest('.card-btn')) return;
+  _drag.startY = e.touches[0].clientY;
+  _drag.timer  = setTimeout(() => {
+    _drag.active = true;
+    _drag.id     = card.dataset.id;
+    _drag.status = card.dataset.status;
+    _drag.card   = card;
+    // Create floating ghost
+    const rect = card.getBoundingClientRect();
+    _drag.ghost = card.cloneNode(true);
+    Object.assign(_drag.ghost.style, {
+      position:'fixed', left:rect.left+'px', top:rect.top+'px',
+      width:rect.width+'px', zIndex:'1000', pointerEvents:'none',
+    });
+    _drag.ghost.classList.add('drag-ghost');
+    _drag.ghost.classList.remove('dragging');
+    document.body.appendChild(_drag.ghost);
+    card.classList.add('dragging');
+    document.querySelectorAll('.col[data-status]').forEach(c => c.classList.add('drop-zone'));
+    navigator.vibrate?.(30);
+  }, 420);
+}, { passive: true });
+
+document.addEventListener('touchmove', e => {
+  if (_drag.timer) {
+    if (Math.abs(e.touches[0].clientY - _drag.startY) > 8) { clearTimeout(_drag.timer); _drag.timer = null; }
+  }
+  if (!_drag.active) return;
+  e.preventDefault();
+  const t = e.touches[0];
+  _drag.ghost.style.left = (t.clientX - _drag.ghost.offsetWidth / 2) + 'px';
+  _drag.ghost.style.top  = (t.clientY - 40) + 'px';
+  // Find column under finger (hide ghost temporarily to hit-test)
+  _drag.ghost.style.visibility = 'hidden';
+  const col = document.elementFromPoint(t.clientX, t.clientY)?.closest('.col[data-status]');
+  _drag.ghost.style.visibility = '';
+  document.querySelectorAll('.col[data-status]').forEach(c => c.classList.toggle('drag-over', c === col));
+}, { passive: false });
+
+document.addEventListener('touchend', e => {
+  clearTimeout(_drag.timer); _drag.timer = null;
+  if (!_drag.active) return;
+  const t = e.changedTouches[0];
+  _drag.ghost.style.visibility = 'hidden';
+  const col = document.elementFromPoint(t.clientX, t.clientY)?.closest('.col[data-status]');
+  _drag.ghost.style.visibility = '';
+  const newStatus = col?.dataset.status;
+  if (newStatus && _drag.id && newStatus !== _drag.status) advance(_drag.id, newStatus);
+  // Cleanup
+  _drag.ghost?.remove();
+  _drag.card?.classList.remove('dragging');
+  document.querySelectorAll('.col[data-status]').forEach(c => c.classList.remove('drop-zone','drag-over'));
+  Object.assign(_drag, { active:false, id:null, status:null, card:null, ghost:null });
+}, { passive: true });
+
+document.addEventListener('touchcancel', () => {
+  clearTimeout(_drag.timer); _drag.timer = null;
+  _drag.ghost?.remove();
+  _drag.card?.classList.remove('dragging');
+  document.querySelectorAll('.col[data-status]').forEach(c => c.classList.remove('drop-zone','drag-over'));
+  Object.assign(_drag, { active:false, id:null, status:null, card:null, ghost:null });
+}, { passive: true });
+
+// ── Keyboard ──────────────────────────────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    document.getElementById('modal').style.display          = 'none';
+    document.getElementById('manage-overlay').style.display = 'none';
+    closeDrawer();
+  }
+});
+
+// ── Service Worker ────────────────────────────────────────────────────────────
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(console.warn);
+
+// ── Utilities ─────────────────────────────────────────────────────────────────
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── Boot ──────────────────────────────────────────────────────────────────────
+const saved = loadCfg();
+if (saved) { initBoard(saved); }
+else { document.getElementById('setup-panel').style.display = 'block'; setStatus(false, 'Not connected'); }
+</script>
+</body>
+</html>
