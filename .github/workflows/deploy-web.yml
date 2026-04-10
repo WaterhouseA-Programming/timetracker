@@ -1,0 +1,24 @@
+name: Deploy Tasks PWA
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'tasks-web/**'
+      - '.github/workflows/deploy-web.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./tasks-web
+          cname: ''   # leave blank unless you add a custom domain

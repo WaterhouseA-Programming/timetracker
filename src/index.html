@@ -650,6 +650,24 @@ async function connectFirebase(configOverride) {
 
     localStorage.setItem('fb_config', JSON.stringify(config));
     api.saveFbConfig?.(config); // also persist to AppData so it survives reinstalls
+
+    // Probe Firestore — if the database hasn't been created yet, getDocs returns
+    // a specific error we can catch and show a helpful message for.
+    try {
+      await fb.getDocs(fb.query(fb.collection(db,'customers'), fb.limit(1)));
+    } catch(probe) {
+      const m = (probe.message || '').toLowerCase();
+      const isNoDb = probe.code === 'not-found' ||
+        m.includes('does not exist') || m.includes('database') || m.includes('could not route');
+      if (isNoDb) {
+        const hint = 'Firestore database not found — go to console.firebase.google.com → your project → Firestore Database and click "Create database".';
+        if (errEl) { errEl.textContent = hint; errEl.style.display = 'inline'; }
+        setFbStatus(false, 'Database not found');
+        return false;
+      }
+      // Any other probe error (e.g. network) — let subscribeAll surface it naturally
+    }
+
     setFbStatus(true);
     subscribeAll();
     checkLegacyMigration();
@@ -689,7 +707,15 @@ function subscribeAll() {
     customers = Object.values(cMap);
     // Re-attach projects (fetched separately)
     refreshProjectsIntoCustomers();
-  }, err => { setFbStatus(false, 'Sync error'); console.error(err); });
+  }, err => {
+    const m = (err.message || '').toLowerCase();
+    const isNoDb = err.code === 'not-found' || m.includes('does not exist') || m.includes('database');
+    const msg = isNoDb
+      ? 'Database not found — create Firestore at console.firebase.google.com'
+      : 'Sync error: ' + err.message;
+    setFbStatus(false, msg);
+    console.error(err);
+  });
 
   onSnapshot(collection(db,'projects'), snap => {
     // Store projects and nest into customers
@@ -1253,6 +1279,7 @@ function taskCardHtml(t) {
       ${!done?`<button class="task-act-btn timer-btn" onclick='startTimerFromTask(${JSON.stringify(t)})'>▶ Timer</button>`:''}
       ${!done?`<button class="task-act-btn advance" onclick="advanceTask('${t.id}','${next}')">${nextLbl}</button>`:''}
       ${done?`<button class="task-act-btn" onclick="advanceTask('${t.id}','todo')">↺ Reopen</button>`:''}
+      <button class="task-act-btn" onclick='openEditTaskModal(${JSON.stringify(t)})'>✎</button>
       <button class="task-act-btn" style="margin-left:auto" onclick="removeTask('${t.id}')">✕</button>
     </div>
   </div>`;
@@ -1296,12 +1323,13 @@ function openAddTaskModal() {
 }
 window.openAddTaskModal = openAddTaskModal;
 
-window.updateTaskProjDropdown = function() {
+window.updateTaskProjDropdown = function(preselect) {
   const cid = document.getElementById('m-task-cust')?.value;
   const c = customers.find(x=>x.id===cid);
   const sel = document.getElementById('m-task-proj');
   if (!sel || !c) return;
   sel.innerHTML = (c.projects||[]).map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join('');
+  if (preselect) sel.value = preselect;
 };
 
 window.doAddTaskFromModal = function() {
@@ -1311,6 +1339,44 @@ window.doAddTaskFromModal = function() {
   if (!cust||!proj||!title) return;
   closeModal();
   doAddTask(cust.id, cust.name, proj.id, proj.name, title);
+};
+
+function openEditTaskModal(t) {
+  if (!db) return;
+  const custOpts = customers.map(c=>`<option value="${c.id}"${c.id===t.customerId?' selected':''}>${esc(c.name)}</option>`).join('');
+  showModal('Edit Task',
+    `<div class="form-field">
+       <label>Customer</label>
+       <select id="m-task-cust" onchange="updateTaskProjDropdown()" style="width:100%;padding:9px 11px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none">
+         ${custOpts}
+       </select>
+     </div>
+     <div class="form-field">
+       <label>Project</label>
+       <select id="m-task-proj" style="width:100%;padding:9px 11px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none"></select>
+     </div>
+     <div class="form-field">
+       <label>Task</label>
+       <input id="m-task-title" type="text" value="${esc(t.title)}">
+     </div>`,
+    `<button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+     <button class="btn btn-primary" onclick="doEditTask('${t.id}')">Save</button>`);
+  updateTaskProjDropdown(t.projectId);
+  setTimeout(()=>document.getElementById('m-task-title')?.focus(),50);
+}
+window.openEditTaskModal = openEditTaskModal;
+
+window.doEditTask = async function(id) {
+  const cust = customers.find(c=>c.id===document.getElementById('m-task-cust')?.value);
+  const proj = cust?.projects?.find(p=>p.id===document.getElementById('m-task-proj')?.value);
+  const title = document.getElementById('m-task-title')?.value.trim();
+  if (!cust||!proj||!title) return;
+  closeModal();
+  const { doc, updateDoc } = _fs;
+  await updateDoc(doc(db,'tasks',id), {
+    title, customerId:cust.id, customerName:cust.name,
+    projectId:proj.id, projectName:proj.name,
+  });
 };
 
 function addTask(cid, cname, pid, pname) {
