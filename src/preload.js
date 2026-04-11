@@ -34,5 +34,6 @@ contextBridge.exposeInMainWorld('api', {
   onTrayStopTimer:    (cb) => ipcRenderer.on('tray-stop-timer',    ()      => cb()),
   onTrayStartTimer:   (cb) => ipcRenderer.on('tray-start-timer',   (_, p)  => cb(p)),
   onIdleAction:       (cb) => ipcRenderer.on('idle-action',        (_, p)  => cb(p)),
-  onUpdateStatus:     (cb) => ipcRenderer.on('update-status',      (_, msg)=> cb(msg)),
+  onUpdateStatus:       (cb) => ipcRenderer.on('update-status',       (_, msg)=> cb(msg)),
+  onPromptTimeCapture:  (cb) => ipcRenderer.on('prompt-time-capture', (_, p)  => cb(p)),
 });

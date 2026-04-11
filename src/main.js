@@ -21,6 +21,7 @@ const {
   ipcMain, dialog, powerMonitor, Notification,
 } = require('electron');
 const { autoUpdater } = require('electron-updater');
+const { exec }        = require('child_process');
 const path = require('path');
 const fs   = require('fs');
 const os   = require('os');
@@ -220,7 +221,8 @@ function updateTrayTicker() {
     tray.setToolTip('TimeTracker — idle');
     tray.setImage(makeTrayIcon(false));
   }
-  tray.setContextMenu(buildTrayMenu());
+  // Menu is built on-demand in the right-click handler — not here — to avoid
+  // blocking the UI thread every minute with Menu.buildFromTemplate.
 }
 
 function fmtDur(s) {
@@ -228,6 +230,40 @@ function fmtDur(s) {
   if (h > 0) return `${h}h ${String(m).padStart(2,'0')}m`;
   if (m > 0) return `${m}m`;
   return `${s}s`;
+}
+
+// ─── Claude activity detection ───────────────────────────────────────────────
+// Checks once per minute whether claude.exe is running.  After 5 consecutive
+// minutes with Claude open and no timer running, shows a capture prompt.
+let _claudeMins         = 0;
+let _claudeSnoozedUntil = 0;
+
+function checkClaudeActivity() {
+  if (activeTimer) { _claudeMins = 0; return; } // already tracking — nothing to prompt
+  exec('tasklist /FI "IMAGENAME eq claude.exe" /NH /FO CSV 2>nul', (err, out) => {
+    if (err || !out.toLowerCase().includes('claude.exe')) { _claudeMins = 0; return; }
+    _claudeMins++;
+    if (_claudeMins >= 5 && Date.now() > _claudeSnoozedUntil) {
+      _claudeMins         = 0;
+      _claudeSnoozedUntil = Date.now() + 30 * 60_000; // snooze 30 min
+      promptClaudeTime();
+    }
+  });
+}
+
+function promptClaudeTime() {
+  if (!Notification.isSupported()) return;
+  const n = new Notification({
+    title: 'Logging Claude time?',
+    body:  'Claude has been open for 5+ minutes — click to log it.',
+    silent: false,
+  });
+  n.on('click', () => {
+    createWindow();
+    // Give the window 600 ms to finish loading before sending the IPC message
+    setTimeout(() => mainWindow?.webContents.send('prompt-time-capture', { app: 'Claude' }), 600);
+  });
+  n.show();
 }
 
 // ─── Idle detection ───────────────────────────────────────────────────────────
@@ -342,12 +378,16 @@ app.whenReady().then(() => {
   app.setAppUserModelId('com.timetracker.app');
 
   tray = new Tray(makeTrayIcon(false));
-  tray.setContextMenu(buildTrayMenu());
-  tray.on('double-click', () => createWindow());
+  tray.on('click',       () => createWindow());
+  tray.on('double-click',() => createWindow());
+  // Build the menu only when the user actually right-clicks — avoids the
+  // UI-thread stutter that happened when rebuilding on a 60s timer.
+  tray.on('right-click', () => tray.popUpContextMenu(buildTrayMenu()));
 
-  setInterval(updateTrayTicker, 60_000);
-  setInterval(checkIdle,        30_000);
-  setInterval(checkLongRunning, 5 * 60_000);
+  setInterval(updateTrayTicker,    60_000);
+  setInterval(checkIdle,           30_000);
+  setInterval(checkLongRunning,  5 * 60_000);
+  setInterval(checkClaudeActivity, 60_000);
 
   createWindow();
 });

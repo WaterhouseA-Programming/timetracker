@@ -920,6 +920,12 @@ function updateTrayCache() {
   })));
 }
 
+// Listen for Claude activity prompt — navigate to tracker so user can start a timer
+api.onPromptTimeCapture?.(() => {
+  const nav = document.querySelector('[data-page="tracker"]');
+  if (nav) showPage('tracker', nav);
+});
+
 // Listen for tray commands
 api.onTrayStopTimer(() => doStopTimer());
 api.onTrayStartTimer(({ customerId, customerName, projectId, projectName, category }) => {
