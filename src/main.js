@@ -237,13 +237,22 @@ function fmtDur(s) {
 // minutes with Claude open and no timer running, shows a capture prompt.
 let _claudeMins         = 0;
 let _claudeSnoozedUntil = 0;
+let _lastTimerStopTime  = 0; // set in timer-state-update handler below
 
 function checkClaudeActivity() {
-  if (activeTimer) { _claudeMins = 0; return; } // already tracking — nothing to prompt
+  // Don't prompt if a timer is already running
+  if (activeTimer) { _claudeMins = 0; return; }
+  // Don't prompt within 30 minutes of a timer stopping (user just finished work)
+  if (Date.now() - _lastTimerStopTime < 30 * 60_000) { _claudeMins = 0; return; }
+
   exec('tasklist /FI "IMAGENAME eq claude.exe" /NH /FO CSV 2>nul', (err, out) => {
+    // Re-check both conditions after the async exec gap
+    if (activeTimer) { _claudeMins = 0; return; }
+    if (Date.now() - _lastTimerStopTime < 30 * 60_000) { _claudeMins = 0; return; }
     if (err || !out.toLowerCase().includes('claude.exe')) { _claudeMins = 0; return; }
     _claudeMins++;
     if (_claudeMins >= 5 && Date.now() > _claudeSnoozedUntil) {
+      if (activeTimer) { _claudeMins = 0; return; } // one final guard
       _claudeMins         = 0;
       _claudeSnoozedUntil = Date.now() + 30 * 60_000; // snooze 30 min
       promptClaudeTime();
@@ -330,6 +339,7 @@ function setAutoStart(on) {
 
 // Renderer pushes timer state here whenever it changes
 ipcMain.on('timer-state-update', (_, state) => {
+  if (activeTimer && !state) _lastTimerStopTime = Date.now(); // record when timer stops
   activeTimer = state; // null when stopped
   updateTrayTicker();
 });
