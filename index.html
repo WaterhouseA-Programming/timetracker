@@ -86,7 +86,7 @@ main{padding:14px 14px 96px;max-width:900px;margin:0 auto}
 .col-count{margin-left:auto;padding:1px 7px;border-radius:10px;background:var(--surface2);border:1px solid var(--border);font-size:10px;color:var(--text2)}
 
 /* ── Task card ── */
-.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;transition:border-color .15s,transform .12s,box-shadow .15s;position:relative;overflow:hidden;cursor:default;touch-action:none}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;transition:border-color .15s,transform .12s,box-shadow .15s;position:relative;overflow:hidden;cursor:default;touch-action:pan-y}
 .card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;border-radius:2px 0 0 2px}
 .card.todo::before{background:var(--muted)}
 .card.inprogress::before{background:var(--blue)}
@@ -743,7 +743,34 @@ function setStatus(on, msg) {
 })();
 
 // ── Touch drag and drop ───────────────────────────────────────────────────────
+// All listeners are passive by default so normal scrolling is never blocked.
+// A non-passive touchmove listener is added ONLY for the duration of an active
+// drag, then immediately removed — this is what lets us call preventDefault()
+// to stop the page scrolling while dragging a card.
 const _drag = { active:false, id:null, status:null, card:null, ghost:null, startY:0, timer:null };
+
+function onActiveDragMove(e) {
+  if (!_drag.active) return;
+  e.preventDefault();
+  const t = e.touches[0];
+  _drag.ghost.style.left = (t.clientX - _drag.ghost.offsetWidth / 2) + 'px';
+  _drag.ghost.style.top  = (t.clientY - 40) + 'px';
+  _drag.ghost.style.visibility = 'hidden';
+  const col = document.elementFromPoint(t.clientX, t.clientY)?.closest('.col[data-status]');
+  _drag.ghost.style.visibility = '';
+  document.querySelectorAll('.col[data-status]').forEach(c => c.classList.toggle('drag-over', c === col));
+}
+
+function cleanupDrag() {
+  document.removeEventListener('touchmove', onActiveDragMove);
+  _drag.ghost?.remove();
+  if (_drag.card) {
+    _drag.card.classList.remove('dragging');
+    _drag.card.style.touchAction = '';
+  }
+  document.querySelectorAll('.col[data-status]').forEach(c => c.classList.remove('drop-zone','drag-over'));
+  Object.assign(_drag, { active:false, id:null, status:null, card:null, ghost:null });
+}
 
 document.addEventListener('touchstart', e => {
   const card = e.target.closest('.card');
@@ -754,9 +781,8 @@ document.addEventListener('touchstart', e => {
     _drag.id     = card.dataset.id;
     _drag.status = card.dataset.status;
     _drag.card   = card;
-    // Create floating ghost
-    const rect = card.getBoundingClientRect();
-    _drag.ghost = card.cloneNode(true);
+    const rect   = card.getBoundingClientRect();
+    _drag.ghost  = card.cloneNode(true);
     Object.assign(_drag.ghost.style, {
       position:'fixed', left:rect.left+'px', top:rect.top+'px',
       width:rect.width+'px', zIndex:'1000', pointerEvents:'none',
@@ -765,26 +791,21 @@ document.addEventListener('touchstart', e => {
     _drag.ghost.classList.remove('dragging');
     document.body.appendChild(_drag.ghost);
     card.classList.add('dragging');
+    card.style.touchAction = 'none'; // lock just this card while dragging
     document.querySelectorAll('.col[data-status]').forEach(c => c.classList.add('drop-zone'));
+    // Only now add the non-passive listener — scroll is unaffected until here
+    document.addEventListener('touchmove', onActiveDragMove, { passive: false });
     navigator.vibrate?.(30);
   }, 420);
 }, { passive: true });
 
+// Passive — only used to cancel the long-press timer if the finger moves first
 document.addEventListener('touchmove', e => {
-  if (_drag.timer) {
-    if (Math.abs(e.touches[0].clientY - _drag.startY) > 8) { clearTimeout(_drag.timer); _drag.timer = null; }
+  if (_drag.timer && Math.abs(e.touches[0].clientY - _drag.startY) > 8) {
+    clearTimeout(_drag.timer);
+    _drag.timer = null;
   }
-  if (!_drag.active) return;
-  e.preventDefault();
-  const t = e.touches[0];
-  _drag.ghost.style.left = (t.clientX - _drag.ghost.offsetWidth / 2) + 'px';
-  _drag.ghost.style.top  = (t.clientY - 40) + 'px';
-  // Find column under finger (hide ghost temporarily to hit-test)
-  _drag.ghost.style.visibility = 'hidden';
-  const col = document.elementFromPoint(t.clientX, t.clientY)?.closest('.col[data-status]');
-  _drag.ghost.style.visibility = '';
-  document.querySelectorAll('.col[data-status]').forEach(c => c.classList.toggle('drag-over', c === col));
-}, { passive: false });
+}, { passive: true });
 
 document.addEventListener('touchend', e => {
   clearTimeout(_drag.timer); _drag.timer = null;
@@ -795,19 +816,12 @@ document.addEventListener('touchend', e => {
   _drag.ghost.style.visibility = '';
   const newStatus = col?.dataset.status;
   if (newStatus && _drag.id && newStatus !== _drag.status) advance(_drag.id, newStatus);
-  // Cleanup
-  _drag.ghost?.remove();
-  _drag.card?.classList.remove('dragging');
-  document.querySelectorAll('.col[data-status]').forEach(c => c.classList.remove('drop-zone','drag-over'));
-  Object.assign(_drag, { active:false, id:null, status:null, card:null, ghost:null });
+  cleanupDrag();
 }, { passive: true });
 
 document.addEventListener('touchcancel', () => {
   clearTimeout(_drag.timer); _drag.timer = null;
-  _drag.ghost?.remove();
-  _drag.card?.classList.remove('dragging');
-  document.querySelectorAll('.col[data-status]').forEach(c => c.classList.remove('drop-zone','drag-over'));
-  Object.assign(_drag, { active:false, id:null, status:null, card:null, ghost:null });
+  cleanupDrag();
 }, { passive: true });
 
 // ── Keyboard ──────────────────────────────────────────────────────────────────
