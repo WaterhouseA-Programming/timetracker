@@ -1272,6 +1272,7 @@ window.deleteProject  = async (id) => {
 // ═══════════════════════════════════════════════════════════════════════════════
 // UI — TASKS PAGE
 // ═══════════════════════════════════════════════════════════════════════════════
+window.renderTasks = renderTasks;
 function renderTasks() {
   const el = document.getElementById('tasks-content');
   if (!db) { el.innerHTML=`<div class="empty"><div class="icon">☁️</div>Connect Firebase in Projects to sync tasks</div>`; return; }
