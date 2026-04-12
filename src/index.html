@@ -138,6 +138,12 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
 .col-dot{width:7px;height:7px;border-radius:50%}
 .task-card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 12px;transition:border-color .15s}
 .task-card:hover{border-color:#333}
+.task-card-active{border-color:#4caf91!important;box-shadow:0 0 0 1px #4caf9140}
+.idea-card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin-bottom:10px;transition:border-color .15s}
+.idea-card:hover{border-color:#333}
+.idea-status-pill{font-size:10px;font-weight:600;padding:3px 8px;border-radius:20px;white-space:nowrap;flex-shrink:0}
+.task-timer-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#4caf91;margin-right:6px;animation:pulse 1.4s ease-in-out infinite;vertical-align:middle}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
 .task-title{font-size:12px;line-height:1.4;margin-bottom:5px}
 .task-title.done{opacity:.4;text-decoration:line-through}
 .task-meta{font-size:10px;color:var(--muted2);margin-bottom:7px}
@@ -320,6 +326,7 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
     <div class="nav-item" data-page="charts"           data-icon="◑" onclick="showPage('charts',this)"><span class="nav-label">Insights</span></div>
     <div class="nav-item" data-page="invoices"         data-icon="£" onclick="showPage('invoices',this)"><span class="nav-label">Invoices</span></div>
     <div class="nav-item" data-page="manage"           data-icon="⊞" onclick="showPage('manage',this)"><span class="nav-label">Projects</span></div>
+    <div class="nav-item" data-page="ideas"            data-icon="💡" onclick="showPage('ideas',this)"><span class="nav-label">Ideas</span></div>
     <div class="nav-item" data-page="settings"         data-icon="⚙" onclick="showPage('settings',this)"><span class="nav-label">Settings</span></div>
   </nav>
 
@@ -522,6 +529,15 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
       </div>
     </div>
 
+    <!-- Ideas page -->
+    <div class="page" id="page-ideas">
+      <div class="page-header">
+        <div class="page-title">Ideas</div>
+        <button class="btn btn-primary" onclick="openAddIdeaModal()" style="margin-left:auto">+ New Idea</button>
+      </div>
+      <div id="ideas-content"><div class="empty"><div class="icon">💡</div>No ideas yet</div></div>
+    </div>
+
   </div>
 </div>
 
@@ -610,6 +626,8 @@ let _fs = null;  // Firestore helpers
 let customers = [];   // [{ id, name, projects:[{id,name,budgetHours}] }]
 let entries   = [];   // [{ id, customerId, projectId, ..., duration }]
 let tasks     = [];
+let taskMap   = {};   // id -> task object, avoids JSON.stringify in onclick attrs
+let ideas     = [];
 let settings  = {};
 
 // Active timer — purely local, not in Firestore (too volatile)
@@ -731,6 +749,7 @@ function subscribeAll() {
 
   onSnapshot(collection(db,'tasks'), snap => {
     tasks = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+    taskMap = Object.fromEntries(tasks.map(t => [t.id, t]));
     renderTasks();
   });
 
@@ -743,6 +762,11 @@ function subscribeAll() {
   });
 
   subscribeInvoices();
+
+  onSnapshot(_fs.query(collection(db,'ideas'), _fs.orderBy('createdAt','desc')), snap => {
+    ideas = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+    renderIdeas();
+  });
 }
 
 function refreshProjectsIntoCustomers() {
@@ -819,7 +843,7 @@ async function saveSettings(patch) {
 // ═══════════════════════════════════════════════════════════════════════════════
 // TIMER
 // ═══════════════════════════════════════════════════════════════════════════════
-function doStartTimer(customer, project, category) {
+function doStartTimer(customer, project, category, taskId, taskTitle) {
   if (activeTimer) doStopTimer();
   activeTimer = {
     customerId:   customer.id,
@@ -828,6 +852,8 @@ function doStartTimer(customer, project, category) {
     projectName:  project.name,
     category:     category || document.getElementById('tracker-category')?.value || 'Coding',
     startTime:    Date.now(),
+    taskId:       taskId   || null,
+    taskTitle:    taskTitle || null,
   };
   api.timerStateUpdate(activeTimer);
   updateTimerBanner();
@@ -1012,7 +1038,11 @@ function updateTimerBanner() {
     dot.classList.add('running');
     dot.style.cssText = `background:${cat.color};box-shadow:0 0 10px ${cat.color}`;
     label.textContent = 'Running'; label.style.color = cat.color;
-    proj.textContent  = `${activeTimer.customerName} › ${activeTimer.projectName}`;
+    if (activeTimer.taskTitle) {
+      proj.innerHTML = `${esc(activeTimer.customerName)} › ${esc(activeTimer.projectName)} — <a href="#" style="color:${cat.color};text-decoration:underline" onclick="showPage('tasks',document.querySelector('[data-page=\\'tasks\\']'));return false;">${esc(activeTimer.taskTitle)}</a>`;
+    } else {
+      proj.textContent = `${activeTimer.customerName} › ${activeTimer.projectName}`;
+    }
     proj.style.color  = 'var(--text)';
     stopBtn.style.display = 'block';
     banner.style.borderLeft = `3px solid ${cat.color}`;
@@ -1279,15 +1309,18 @@ function taskCardHtml(t) {
   const done = t.status==='done';
   const next = t.status==='todo'?'inprogress':'done';
   const nextLbl = t.status==='todo'?'→ Progress':'✓ Done';
-  return `<div class="task-card">
-    <div class="task-title${done?' done':''}">${esc(t.title)}</div>
+  const isActive = activeTimer?.taskId === t.id;
+  return `<div class="task-card${isActive?' task-card-active':''}">
+    <div class="task-title${done?' done':''}">
+      ${isActive?`<span class="task-timer-dot"></span>`:''}${esc(t.title)}
+    </div>
     <div class="task-meta">${esc(t.customerName||'')} › ${esc(t.projectName||'')}</div>
     <div class="task-actions">
-      ${!done?`<button class="task-act-btn timer-btn" onclick='startTimerFromTask(${JSON.stringify(t)})'>▶ Timer</button>`:''}
+      ${!done?`<button class="task-act-btn timer-btn" onclick="startTimerFromTask('${t.id}')">▶ Timer</button>`:''}
       ${!done?`<button class="task-act-btn advance" onclick="advanceTask('${t.id}','${next}')">${nextLbl}</button>`:''}
       ${done?`<button class="task-act-btn" onclick="advanceTask('${t.id}','todo')">↺ Reopen</button>`:''}
-      <button class="task-act-btn" onclick='openLogTimeModal(${JSON.stringify(t)})'>⏱ Log</button>
-      <button class="task-act-btn" onclick='openEditTaskModal(${JSON.stringify(t)})'>✎</button>
+      <button class="task-act-btn" onclick="openLogTimeModal('${t.id}')">⏱ Log</button>
+      <button class="task-act-btn" onclick="openEditTaskModal('${t.id}')">✎</button>
       <button class="task-act-btn" style="margin-left:auto" onclick="removeTask('${t.id}')">✕</button>
     </div>
   </div>`;
@@ -1349,7 +1382,8 @@ window.doAddTaskFromModal = function() {
   doAddTask(cust.id, cust.name, proj.id, proj.name, title);
 };
 
-function openEditTaskModal(t) {
+function openEditTaskModal(id) {
+  const t = taskMap[id]; if (!t) return;
   if (!db) return;
   const custOpts = customers.map(c=>`<option value="${c.id}"${c.id===t.customerId?' selected':''}>${esc(c.name)}</option>`).join('');
   showModal('Edit Task',
@@ -1387,7 +1421,8 @@ window.doEditTask = async function(id) {
   });
 };
 
-function openLogTimeModal(t) {
+function openLogTimeModal(id) {
+  const t = taskMap[id]; if (!t) return;
   if (!db) return;
   const today = new Date().toISOString().slice(0, 10);
   const catOpts = CATEGORIES.map(c => `<option value="${c.id}">${c.label}</option>`).join('');
@@ -1464,6 +1499,7 @@ function addTask(cid, cname, pid, pname) {
 }
 async function doAddTask(cid, cname, pid, pname, titleArg) {
   const title = titleArg || document.getElementById('m-task-title')?.value.trim(); if(!title)return;
+  closeModal();
   const { collection, addDoc, serverTimestamp } = _fs;
   await addDoc(collection(db,'tasks'), {
     title:title.trim(), status:'todo',
@@ -1489,15 +1525,123 @@ async function removeTask(id) {
 }
 window.removeTask = removeTask;
 
-function startTimerFromTask(t) {
+function startTimerFromTask(id) {
+  const t = taskMap[id]; if (!t) return;
   const c = customers.find(x=>x.id===t.customerId);
   const p = c?.projects?.find(x=>x.id===t.projectId);
   if (!c||!p) { alert('Customer/project not found. Check your Projects tab.'); return; }
-  doStartTimer(c, p, 'Coding');
+  doStartTimer(c, p, 'Coding', t.id, t.title);
   const nav = document.querySelector('[data-page="tracker"]');
   if (nav) showPage('tracker', nav);
 }
 window.startTimerFromTask = startTimerFromTask;
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// UI — IDEAS
+// ═══════════════════════════════════════════════════════════════════════════════
+const IDEA_STATUSES = [
+  { id:'idea',      label:'Idea',      color:'#7c8cf8' },
+  { id:'exploring', label:'Exploring', color:'#f5a32a' },
+  { id:'building',  label:'Building',  color:'#4caf91' },
+  { id:'done',      label:'Done',      color:'#888'    },
+];
+
+function renderIdeas() {
+  const el = document.getElementById('ideas-content');
+  if (!el) return;
+  if (!ideas.length) {
+    el.innerHTML = `<div class="empty"><div class="icon">💡</div>No ideas yet — capture your first one!</div>`;
+    return;
+  }
+  el.innerHTML = ideas.map(idea => {
+    const st = IDEA_STATUSES.find(s=>s.id===idea.status) || IDEA_STATUSES[0];
+    return `<div class="idea-card" style="border-left:3px solid ${st.color}">
+      <div style="display:flex;align-items:flex-start;gap:8px">
+        <div style="flex:1">
+          <div style="font-size:13px;font-weight:600;margin-bottom:4px">${esc(idea.title)}</div>
+          ${idea.notes?`<div style="font-size:12px;color:var(--muted2);white-space:pre-wrap">${esc(idea.notes)}</div>`:''}
+        </div>
+        <span class="idea-status-pill" style="background:${st.color}20;color:${st.color}">${st.label}</span>
+      </div>
+      <div style="display:flex;gap:6px;margin-top:10px">
+        <button class="task-act-btn" onclick="openEditIdeaModal('${idea.id}')">✎ Edit</button>
+        <button class="task-act-btn" onclick="cycleIdeaStatus('${idea.id}','${idea.status}')">→ Next</button>
+        <button class="task-act-btn" style="margin-left:auto" onclick="removeIdea('${idea.id}')">✕</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+window.renderIdeas = renderIdeas;
+
+function ideaModalBody(idea) {
+  const statusOpts = IDEA_STATUSES.map(s =>
+    `<option value="${s.id}"${idea&&idea.status===s.id?' selected':''}>${s.label}</option>`).join('');
+  return `<div class="form-field">
+    <label>Title</label>
+    <input id="m-idea-title" type="text" placeholder="e.g. AI-powered invoice parser" value="${idea?esc(idea.title):''}">
+  </div>
+  <div class="form-field">
+    <label>Notes (optional)</label>
+    <textarea id="m-idea-notes" rows="4" placeholder="Describe the idea, motivation, links…" style="width:100%;padding:9px 11px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:'Plus Jakarta Sans',sans-serif;font-size:12px;outline:none;resize:vertical">${idea?esc(idea.notes||''):''}</textarea>
+  </div>
+  <div class="form-field">
+    <label>Status</label>
+    <select id="m-idea-status" style="width:100%;padding:9px 11px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none">${statusOpts}</select>
+  </div>`;
+}
+
+function openAddIdeaModal() {
+  if (!db) { alert('Connect Firebase first.'); return; }
+  showModal('New Idea', ideaModalBody(null),
+    `<button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+     <button class="btn btn-primary" onclick="doAddIdea()">Add</button>`);
+  setTimeout(()=>document.getElementById('m-idea-title')?.focus(),50);
+}
+window.openAddIdeaModal = openAddIdeaModal;
+
+async function doAddIdea() {
+  const title = document.getElementById('m-idea-title')?.value.trim(); if(!title)return;
+  const notes  = document.getElementById('m-idea-notes')?.value.trim() || '';
+  const status = document.getElementById('m-idea-status')?.value || 'idea';
+  closeModal();
+  const { collection, addDoc, serverTimestamp } = _fs;
+  await addDoc(collection(db,'ideas'), { title, notes, status, createdAt: serverTimestamp() });
+}
+window.doAddIdea = doAddIdea;
+
+function openEditIdeaModal(id) {
+  const idea = ideas.find(i=>i.id===id); if(!idea) return;
+  showModal('Edit Idea', ideaModalBody(idea),
+    `<button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+     <button class="btn btn-primary" onclick="doEditIdea('${id}')">Save</button>`);
+  setTimeout(()=>document.getElementById('m-idea-title')?.focus(),50);
+}
+window.openEditIdeaModal = openEditIdeaModal;
+
+async function doEditIdea(id) {
+  const title = document.getElementById('m-idea-title')?.value.trim(); if(!title)return;
+  const notes  = document.getElementById('m-idea-notes')?.value.trim() || '';
+  const status = document.getElementById('m-idea-status')?.value || 'idea';
+  closeModal();
+  const { doc, updateDoc } = _fs;
+  await updateDoc(doc(db,'ideas',id), { title, notes, status });
+}
+window.doEditIdea = doEditIdea;
+
+async function cycleIdeaStatus(id, current) {
+  const idx = IDEA_STATUSES.findIndex(s=>s.id===current);
+  const next = IDEA_STATUSES[(idx+1) % IDEA_STATUSES.length].id;
+  const { doc, updateDoc } = _fs;
+  await updateDoc(doc(db,'ideas',id), { status: next });
+}
+window.cycleIdeaStatus = cycleIdeaStatus;
+
+async function removeIdea(id) {
+  if (!confirm('Delete this idea?')) return;
+  const { doc, deleteDoc } = _fs;
+  await deleteDoc(doc(db,'ideas',id));
+}
+window.removeIdea = removeIdea;
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // UI — INSIGHTS / CHARTS
