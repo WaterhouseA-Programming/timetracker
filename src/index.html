@@ -156,6 +156,12 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
 .task-act-btn.advance:hover{background:var(--accent);color:#000}
 .task-add-btn{padding:8px;border:1px dashed var(--border);border-radius:8px;background:transparent;color:var(--muted);font-size:11px;cursor:pointer;text-align:center;transition:all .15s;width:100%;font-family:'Plus Jakarta Sans',sans-serif}
 .task-add-btn:hover{border-color:#444;color:var(--muted2)}
+.task-card-blocked{border-color:#ff475740!important}
+.task-priority-badge{font-size:9px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:1px 5px;border-radius:3px;white-space:nowrap;flex-shrink:0}
+.task-blocked-badge{display:inline-flex;align-items:center;gap:3px;font-size:9px;font-weight:600;color:#ff4757;padding:2px 6px;border-radius:3px;background:rgba(255,71,87,.08);border:1px solid rgba(255,71,87,.2);margin-bottom:6px}
+.task-dep-checks{display:flex;flex-direction:column;gap:5px;max-height:160px;overflow-y:auto;padding:6px 8px;background:var(--bg);border:1px solid var(--border);border-radius:6px}
+.task-dep-check{display:flex;align-items:center;gap:7px;font-size:11px;cursor:pointer}
+.task-dep-check input{accent-color:var(--accent);cursor:pointer}
 .task-filter-bar{display:flex;gap:8px;margin-bottom:16px}
 .task-filter-bar select{padding:6px 10px;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:'Plus Jakarta Sans',sans-serif;font-size:12px;outline:none}
 
@@ -612,6 +618,13 @@ const TASK_STATUSES = [
   { id:'inprogress', label:'In Progress',color:'#47c8ff' },
   { id:'done',       label:'Done',       color:'#47ff8a' },
 ];
+const TASK_PRIORITIES = [
+  { id:'low',      label:'Low',      color:'#555'    },
+  { id:'normal',   label:'Normal',   color:'#47c8ff' },
+  { id:'high',     label:'High',     color:'#ffaa00' },
+  { id:'critical', label:'Critical', color:'#ff4757' },
+];
+const PRIO_ORDER = { critical:0, high:1, normal:2, low:3 };
 const CHART_PALETTE = ['#e8ff47','#47c8ff','#ff6b9d','#47ff8a','#ff9f47','#c847ff','#47ffe0','#ff4757'];
 
 function getCat(id) { return CATEGORIES.find(c=>c.id===id) || { id:'General',label:id||'General',color:'#555',bg:'rgba(85,85,85,.12)' }; }
@@ -1296,7 +1309,7 @@ function renderTasks() {
     </div>
     <div class="task-cols">
       ${TASK_STATUSES.map(s => {
-        const col = filtered.filter(t=>t.status===s.id);
+        const col = filtered.filter(t=>t.status===s.id).sort((a,b)=>(PRIO_ORDER[a.priority||'normal']??2)-(PRIO_ORDER[b.priority||'normal']??2));
         return `<div class="task-col">
           <div class="task-col-header"><span class="col-dot" style="background:${s.color}"></span>${s.label}<span style="margin-left:auto">${col.length}</span></div>
           ${col.map(t=>taskCardHtml(t)).join('')}
@@ -1311,10 +1324,18 @@ function taskCardHtml(t) {
   const next = t.status==='todo'?'inprogress':'done';
   const nextLbl = t.status==='todo'?'→ Progress':'✓ Done';
   const isActive = activeTimer?.taskId === t.id;
-  return `<div class="task-card${isActive?' task-card-active':''}">
-    <div class="task-title${done?' done':''}">
-      ${isActive?`<span class="task-timer-dot"></span>`:''}${esc(t.title)}
+  const prio = TASK_PRIORITIES.find(p=>p.id===t.priority);
+  const showPrio = prio && t.priority !== 'normal';
+  const blockers = (t.dependsOn||[]).filter(depId=>{ const d=taskMap[depId]; return d&&d.status!=='done'; });
+  const isBlocked = blockers.length > 0;
+  return `<div class="task-card${isActive?' task-card-active':''}${isBlocked?' task-card-blocked':''}">
+    <div style="display:flex;align-items:flex-start;gap:6px;margin-bottom:4px">
+      <div class="task-title${done?' done':''}" style="margin-bottom:0;flex:1">
+        ${isActive?`<span class="task-timer-dot"></span>`:''}${esc(t.title)}
+      </div>
+      ${showPrio?`<span class="task-priority-badge" style="background:${prio.color}20;color:${prio.color};border:1px solid ${prio.color}40">${prio.label}</span>`:''}
     </div>
+    ${isBlocked?`<div class="task-blocked-badge">⛔ Blocked by ${blockers.length} task${blockers.length>1?'s':''}</div>`:''}
     <div class="task-meta">${esc(t.customerName||'')} › ${esc(t.projectName||'')}</div>
     <div class="task-actions">
       ${!done?`<button class="task-act-btn timer-btn" onclick="startTimerFromTask('${t.id}')">▶ Timer</button>`:''}
@@ -1343,6 +1364,7 @@ function openAddTaskModal() {
   if (!db) { alert('Connect Firebase first.'); return; }
   if (!customers.length) { alert('Add a customer and project in the Projects tab first.'); return; }
   const custOpts = customers.map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join('');
+  const prioOpts = TASK_PRIORITIES.map(p=>`<option value="${p.id}"${p.id==='normal'?' selected':''}>${p.label}</option>`).join('');
   showModal('New Task',
     `<div class="form-field">
        <label>Customer</label>
@@ -1357,6 +1379,10 @@ function openAddTaskModal() {
      <div class="form-field">
        <label>Task</label>
        <input id="m-task-title" type="text" placeholder="e.g. Update homepage copy">
+     </div>
+     <div class="form-field">
+       <label>Priority</label>
+       <select id="m-task-prio" style="width:100%;padding:9px 11px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none">${prioOpts}</select>
      </div>`,
     `<button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
      <button class="btn btn-primary" onclick="doAddTaskFromModal()">Add</button>`);
@@ -1378,15 +1404,22 @@ window.doAddTaskFromModal = function() {
   const cust = customers.find(c=>c.id===document.getElementById('m-task-cust')?.value);
   const proj = cust?.projects?.find(p=>p.id===document.getElementById('m-task-proj')?.value);
   const title = document.getElementById('m-task-title')?.value.trim();
+  const prio = document.getElementById('m-task-prio')?.value || 'normal';
   if (!cust||!proj||!title) return;
   closeModal();
-  doAddTask(cust.id, cust.name, proj.id, proj.name, title);
+  doAddTask(cust.id, cust.name, proj.id, proj.name, title, prio);
 };
 
 function openEditTaskModal(id) {
   const t = taskMap[id]; if (!t) return;
   if (!db) return;
   const custOpts = customers.map(c=>`<option value="${c.id}"${c.id===t.customerId?' selected':''}>${esc(c.name)}</option>`).join('');
+  const prioOpts = TASK_PRIORITIES.map(p=>`<option value="${p.id}"${p.id===(t.priority||'normal')?' selected':''}>${p.label}</option>`).join('');
+  const currentDeps = t.dependsOn || [];
+  const otherTasks = tasks.filter(x=>x.id!==id&&x.status!=='done');
+  const depChecks = otherTasks.length
+    ? otherTasks.map(x=>`<label class="task-dep-check"><input type="checkbox" value="${x.id}"${currentDeps.includes(x.id)?' checked':''}><span>${esc(x.title)}<span style="color:var(--muted2);margin-left:4px">(${esc(x.customerName||'')} › ${esc(x.projectName||'')})</span></span></label>`).join('')
+    : `<div style="font-size:11px;color:var(--muted2)">No other open tasks to link</div>`;
   showModal('Edit Task',
     `<div class="form-field">
        <label>Customer</label>
@@ -1401,6 +1434,14 @@ function openEditTaskModal(id) {
      <div class="form-field">
        <label>Task</label>
        <input id="m-task-title" type="text" value="${esc(t.title)}">
+     </div>
+     <div class="form-field">
+       <label>Priority</label>
+       <select id="m-task-prio" style="width:100%;padding:9px 11px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none">${prioOpts}</select>
+     </div>
+     <div class="form-field">
+       <label>Depends on (must finish first)</label>
+       <div class="task-dep-checks" id="m-task-deps">${depChecks}</div>
      </div>`,
     `<button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
      <button class="btn btn-primary" onclick="doEditTask('${t.id}')">Save</button>`);
@@ -1413,12 +1454,15 @@ window.doEditTask = async function(id) {
   const cust = customers.find(c=>c.id===document.getElementById('m-task-cust')?.value);
   const proj = cust?.projects?.find(p=>p.id===document.getElementById('m-task-proj')?.value);
   const title = document.getElementById('m-task-title')?.value.trim();
+  const priority = document.getElementById('m-task-prio')?.value || 'normal';
+  const dependsOn = [...document.querySelectorAll('#m-task-deps input:checked')].map(cb=>cb.value);
   if (!cust||!proj||!title) return;
   closeModal();
   const { doc, updateDoc } = _fs;
   await updateDoc(doc(db,'tasks',id), {
     title, customerId:cust.id, customerName:cust.name,
     projectId:proj.id, projectName:proj.name,
+    priority, dependsOn,
   });
 };
 
@@ -1491,19 +1535,22 @@ window.doLogTime = doLogTime;
 
 function addTask(cid, cname, pid, pname) {
   if (!db) return;
+  const prioOpts = TASK_PRIORITIES.map(p=>`<option value="${p.id}"${p.id==='normal'?' selected':''}>${p.label}</option>`).join('');
   showModal(`New Task — ${cname} › ${pname}`,
     `<div class="form-field"><label>Task</label><input id="m-task-title" type="text" placeholder="e.g. Update homepage copy"></div>
+     <div class="form-field"><label>Priority</label><select id="m-task-prio" style="width:100%;padding:9px 11px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none">${prioOpts}</select></div>
      <div id="m-error" style="display:none;color:var(--red);font-size:12px;margin-top:8px"></div>`,
     `<button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
      <button class="btn btn-primary" onclick="doAddTask('${cid}','${esc(cname)}','${pid}','${esc(pname)}')">Add</button>`);
   setTimeout(()=>document.getElementById('m-task-title')?.focus(),50);
 }
-async function doAddTask(cid, cname, pid, pname, titleArg) {
+async function doAddTask(cid, cname, pid, pname, titleArg, prioArg) {
   const title = titleArg || document.getElementById('m-task-title')?.value.trim(); if(!title)return;
+  const priority = prioArg || document.getElementById('m-task-prio')?.value || 'normal';
   closeModal();
   const { collection, addDoc, serverTimestamp } = _fs;
   await addDoc(collection(db,'tasks'), {
-    title:title.trim(), status:'todo',
+    title:title.trim(), status:'todo', priority,
     customerId:cid, customerName:cname,
     projectId:pid,  projectName:pname,
     createdAt:serverTimestamp(),
@@ -1532,8 +1579,6 @@ function startTimerFromTask(id) {
   const p = c?.projects?.find(x=>x.id===t.projectId);
   if (!c||!p) { alert('Customer/project not found. Check your Projects tab.'); return; }
   doStartTimer(c, p, 'Coding', t.id, t.title);
-  const nav = document.querySelector('[data-page="tracker"]');
-  if (nav) showPage('tracker', nav);
 }
 window.startTimerFromTask = startTimerFromTask;
 
