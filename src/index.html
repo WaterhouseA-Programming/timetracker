@@ -735,7 +735,7 @@ function subscribeAll() {
     // Build customers with nested projects from flat collections
     const cMap = {};
     snap.docs.forEach(d => { cMap[d.id] = { id:d.id, ...d.data(), projects:[] }; });
-    customers = Object.values(cMap);
+    customers = Object.values(cMap).sort((a,b)=>a.name.localeCompare(b.name));
     // Re-attach projects (fetched separately)
     refreshProjectsIntoCustomers();
   }, err => {
@@ -751,7 +751,7 @@ function subscribeAll() {
   onSnapshot(collection(db,'projects'), snap => {
     // Store projects and nest into customers
     const allProjects = snap.docs.map(d => ({ id:d.id, ...d.data() }));
-    customers.forEach(c => { c.projects = allProjects.filter(p => p.customerId === c.id); });
+    customers.forEach(c => { c.projects = allProjects.filter(p => p.customerId === c.id).sort((a,b)=>a.name.localeCompare(b.name)); });
     afterDataSync();
   });
 
@@ -787,7 +787,7 @@ function refreshProjectsIntoCustomers() {
   const { collection, getDocs } = _fs;
   getDocs(collection(db,'projects')).then(snap => {
     const allProjects = snap.docs.map(d => ({ id:d.id, ...d.data() }));
-    customers.forEach(c => { c.projects = allProjects.filter(p => p.customerId === c.id); });
+    customers.forEach(c => { c.projects = allProjects.filter(p => p.customerId === c.id).sort((a,b)=>a.name.localeCompare(b.name)); });
     afterDataSync();
   });
 }
