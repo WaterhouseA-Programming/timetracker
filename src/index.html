@@ -1630,6 +1630,7 @@ function renderIdeas() {
       <div style="display:flex;gap:6px;margin-top:10px">
         <button class="task-act-btn" onclick="openEditIdeaModal('${idea.id}')">✎ Edit</button>
         <button class="task-act-btn" onclick="cycleIdeaStatus('${idea.id}','${idea.status}')">→ Next</button>
+        <button class="task-act-btn" onclick="openLogTimeIdeaModal('${idea.id}')">⏱ Log</button>
         <button class="task-act-btn" style="margin-left:auto" onclick="removeIdea('${idea.id}')">✕</button>
       </div>
     </div>`;
@@ -1706,6 +1707,69 @@ async function removeIdea(id) {
   await deleteDoc(doc(db,'ideas',id));
 }
 window.removeIdea = removeIdea;
+
+function openLogTimeIdeaModal(id) {
+  const idea = ideas.find(i=>i.id===id); if (!idea||!db) return;
+  const today = new Date().toISOString().slice(0,10);
+  const catOpts = CATEGORIES.map(c=>`<option value="${c.id}">${c.label}</option>`).join('');
+  showModal(`Log Time — 💡 ${esc(idea.title)}`,
+    `<div class="form-field">
+       <label>Date</label>
+       <input id="m-log-date" type="date" value="${today}">
+     </div>
+     <div class="form-field">
+       <label>Duration</label>
+       <div style="display:flex;gap:10px">
+         <div style="flex:1">
+           <input id="m-log-h" type="number" min="0" max="23" placeholder="0" style="width:100%;padding:9px 11px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none">
+           <div style="font-size:10px;color:var(--muted2);margin-top:3px;text-align:center">hours</div>
+         </div>
+         <div style="flex:1">
+           <input id="m-log-m" type="number" min="0" max="59" placeholder="0" style="width:100%;padding:9px 11px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none">
+           <div style="font-size:10px;color:var(--muted2);margin-top:3px;text-align:center">minutes</div>
+         </div>
+       </div>
+     </div>
+     <div class="form-field">
+       <label>Category</label>
+       <select id="m-log-cat" style="width:100%;padding:9px 11px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none">${catOpts}</select>
+     </div>
+     <div class="form-field">
+       <label>Notes (optional)</label>
+       <input id="m-log-note" type="text" placeholder="What did you work on?">
+     </div>
+     <div id="m-error" style="display:none;color:var(--red);font-size:12px;margin-top:4px"></div>`,
+    `<button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+     <button class="btn btn-primary" onclick="doLogTimeIdea('${id}')">Save Entry</button>`);
+  setTimeout(()=>document.getElementById('m-log-h')?.focus(),50);
+}
+window.openLogTimeIdeaModal = openLogTimeIdeaModal;
+
+async function doLogTimeIdea(id) {
+  const idea = ideas.find(i=>i.id===id); if (!idea) return;
+  const dateVal  = document.getElementById('m-log-date')?.value;
+  const hours    = Math.max(0, parseInt(document.getElementById('m-log-h')?.value)  || 0);
+  const minutes  = Math.max(0, parseInt(document.getElementById('m-log-m')?.value)  || 0);
+  const category = document.getElementById('m-log-cat')?.value || 'Coding';
+  const note     = document.getElementById('m-log-note')?.value.trim() || '';
+  const duration = hours * 3600 + minutes * 60;
+  if (duration <= 0) {
+    const e = document.getElementById('m-error');
+    if (e) { e.textContent = 'Enter at least 1 minute'; e.style.display = 'block'; }
+    return;
+  }
+  const startTime = new Date(dateVal).getTime() + 9 * 3600_000;
+  const endTime   = startTime + duration * 1000;
+  closeModal();
+  const { collection, addDoc, serverTimestamp } = _fs;
+  await addDoc(collection(db,'entries'), {
+    customerId: 'ideas', customerName: 'Ideas',
+    projectId: idea.id,  projectName: idea.title,
+    category, startTime, endTime, duration,
+    note, manual: true, createdAt: serverTimestamp(),
+  });
+}
+window.doLogTimeIdea = doLogTimeIdea;
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // UI — INSIGHTS / CHARTS
