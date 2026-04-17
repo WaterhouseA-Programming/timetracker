@@ -282,7 +282,7 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
   }
   .nav-item.active { border-top-color: var(--accent); border-left-color: transparent; background: rgba(232,255,71,.05); }
   .nav-section { display: none; }
-  #main { height: calc(100dvh - 44px - 56px); overflow: hidden; }
+  #main { flex: 1; min-height: 0; overflow: hidden; }
   .page { padding: 14px; }
   .page-header { margin-bottom: 14px; }
   .page-title { font-size: 17px; }
@@ -308,6 +308,9 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
   .cat-pill { font-size: 10px; padding: 3px 8px; }
   #stop-btn { padding: 6px 12px; font-size: 11px; }
 }
+
+/* Remove 300ms tap delay on mobile */
+button, input, select, textarea, a, [onclick], .nav-item, .task-act-btn, .task-add-btn, .cat-pill { touch-action: manipulation; }
 
 ::-webkit-scrollbar{width:4px}
 ::-webkit-scrollbar-track{background:transparent}
@@ -1309,7 +1312,14 @@ function renderTasks() {
     </div>
     <div class="task-cols">
       ${TASK_STATUSES.map(s => {
-        const col = filtered.filter(t=>t.status===s.id).sort((a,b)=>(PRIO_ORDER[a.priority||'normal']??2)-(PRIO_ORDER[b.priority||'normal']??2));
+        const col = filtered.filter(t=>t.status===s.id).sort((a,b)=> {
+          if (s.id==='done') {
+            const ta = a.completedAt?.seconds ?? a.createdAt?.seconds ?? 0;
+            const tb = b.completedAt?.seconds ?? b.createdAt?.seconds ?? 0;
+            return tb - ta; // most recently done first
+          }
+          return (PRIO_ORDER[a.priority||'normal']??2)-(PRIO_ORDER[b.priority||'normal']??2);
+        });
         return `<div class="task-col">
           <div class="task-col-header"><span class="col-dot" style="background:${s.color}"></span>${s.label}<span style="margin-left:auto">${col.length}</span></div>
           ${col.map(t=>taskCardHtml(t)).join('')}
@@ -1561,8 +1571,10 @@ window.doAddTask = doAddTask;
 
 async function advanceTask(id, status) {
   if (!db) return;
-  const { doc, updateDoc } = _fs;
-  await updateDoc(doc(db,'tasks',id), { status });
+  const { doc, updateDoc, serverTimestamp } = _fs;
+  const update = { status };
+  if (status === 'done') update.completedAt = serverTimestamp();
+  await updateDoc(doc(db,'tasks',id), update);
 }
 window.advanceTask = advanceTask;
 
@@ -1599,7 +1611,13 @@ function renderIdeas() {
     el.innerHTML = `<div class="empty"><div class="icon">💡</div>No ideas yet — capture your first one!</div>`;
     return;
   }
-  el.innerHTML = ideas.map(idea => {
+  const sorted = [...ideas].sort((a,b) => {
+    const aDone = a.status==='done' ? 1 : 0;
+    const bDone = b.status==='done' ? 1 : 0;
+    if (aDone !== bDone) return aDone - bDone;
+    return 0; // preserve existing createdAt order within each group
+  });
+  el.innerHTML = sorted.map(idea => {
     const st = IDEA_STATUSES.find(s=>s.id===idea.status) || IDEA_STATUSES[0];
     return `<div class="idea-card" style="border-left:3px solid ${st.color}">
       <div style="display:flex;align-items:flex-start;gap:8px">
