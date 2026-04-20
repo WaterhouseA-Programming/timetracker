@@ -334,6 +334,7 @@ main{padding:14px 14px 96px;max-width:900px;margin:0 auto}
     <div class="quick-bar">
       <button class="quick-btn quick-btn-manage" onclick="openManagePanel()">🏢 Customers &amp; Projects</button>
       <button class="quick-btn quick-btn-ideas" onclick="openIdeasPanel()">💡 Ideas</button>
+      <button class="quick-btn quick-btn-proposals" onclick="openProposalsPanel()">📋 Proposals</button>
       <button class="quick-btn quick-btn-settings" onclick="openDrawer()">⚙ Settings</button>
     </div>
     <div class="cols" id="cols"></div>
@@ -434,6 +435,64 @@ main{padding:14px 14px 96px;max-width:900px;margin:0 auto}
   </div>
 </div>
 
+<!-- Proposals panel -->
+<div class="overlay" id="proposals-overlay" style="display:none" onclick="closeProposalsPanel(event)">
+  <div class="modal modal-tall" onclick="event.stopPropagation()">
+    <div class="modal-handle"></div>
+    <div class="modal-hdr">
+      <h3>📋 Proposals</h3>
+      <button class="icon-btn" style="width:28px;height:28px;font-size:13px" onclick="closeProposalsPanel()">✕</button>
+    </div>
+    <div id="proposals-list" style="flex:1;overflow-y:auto;padding:0 18px"></div>
+    <div style="padding:14px 18px;border-top:1px solid var(--border);flex-shrink:0">
+      <button class="btn btn-primary" style="width:100%" onclick="openAddProposalForm()">+ New Proposal</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add/Edit proposal modal -->
+<div class="overlay" id="proposal-form-overlay" style="display:none" onclick="closeProposalForm(event)">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-handle"></div>
+    <h3 id="proposal-form-title">New Proposal</h3>
+    <div class="field">
+      <label>Title</label>
+      <input type="text" id="m-prop-title" placeholder="e.g. Website redesign for Acme"
+             autocorrect="on" autocapitalize="sentences" spellcheck="true">
+    </div>
+    <div class="field">
+      <label>Customer</label>
+      <select id="m-prop-cust" style="width:100%;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:13px;outline:none">
+        <option value="">— No customer —</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Value (optional)</label>
+      <input type="text" id="m-prop-value" placeholder="e.g. £2,500"
+             autocorrect="off" autocapitalize="none" inputmode="decimal">
+    </div>
+    <div class="field">
+      <label>Status</label>
+      <select id="m-prop-status" style="width:100%;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:13px;outline:none">
+        <option value="draft">Draft</option>
+        <option value="sent">Sent</option>
+        <option value="won">Won</option>
+        <option value="lost">Lost</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Notes (optional)</label>
+      <textarea id="m-prop-notes" rows="3" placeholder="Scope, deadline, contact…"
+        autocorrect="on" autocapitalize="sentences"
+        style="width:100%;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-family:'Plus Jakarta Sans',sans-serif;font-size:13px;outline:none;resize:vertical"></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeProposalForm()">Cancel</button>
+      <button class="btn btn-primary" id="proposal-save-btn" onclick="saveProposal()">Add</button>
+    </div>
+  </div>
+</div>
+
 <script type="module">
 import { initializeApp, getApps } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
 import {
@@ -447,8 +506,10 @@ let customers   = [];
 let allProjects = [];
 let tasks       = [];
 let ideas       = [];
-let editingTaskId = null;
-let editingIdeaId = null;
+let proposals   = [];
+let editingTaskId     = null;
+let editingIdeaId     = null;
+let editingProposalId = null;
 
 const STATUSES = [
   { id:'todo',       label:'To Do',       color:'#555'    },
@@ -564,6 +625,16 @@ function subscribeAll() {
       renderIdeas();
     });
   });
+
+  onSnapshot(query(collection(db,'proposals'), orderBy('createdAt','desc')), snap => {
+    proposals = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+    renderProposals();
+  }, () => {
+    onSnapshot(collection(db,'proposals'), snap => {
+      proposals = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+      renderProposals();
+    });
+  });
 }
 
 // ── Filters ───────────────────────────────────────────────────────────────────
@@ -596,7 +667,8 @@ function renderBoard() {
 
   const noProjects = !allProjects.length;
   document.getElementById('cols').innerHTML = STATUSES.map(s => {
-    const col = filtered.filter(t => t.status === s.id);
+    let col = filtered.filter(t => t.status === s.id);
+    if (s.id === 'inprogress') col.sort((a,b) => (a.inProgressAt?.seconds||0) - (b.inProgressAt?.seconds||0));
     const cards = col.length
       ? col.map(t => cardHtml(t)).join('')
       : s.id === 'todo' && noProjects
@@ -646,7 +718,10 @@ function addButtons(cc, cp) {
 }
 
 // ── Task CRUD ─────────────────────────────────────────────────────────────────
-window.advance    = async (id, status) => { await updateDoc(doc(db,'tasks',id), { status }); };
+window.advance = async (id, status) => {
+  const extra = status === 'inprogress' ? { inProgressAt: serverTimestamp() } : {};
+  await updateDoc(doc(db,'tasks',id), { status, ...extra });
+};
 window.removeTask = async (id) => { await deleteDoc(doc(db,'tasks',id)); };
 
 // ── Add / Edit modal ──────────────────────────────────────────────────────────
@@ -985,6 +1060,119 @@ window.cycleIdeaStatus = async function(id, current) {
 window.removeIdea = async function(id) {
   if (!confirm('Delete this idea?')) return;
   await deleteDoc(doc(db,'ideas',id));
+};
+
+// ── Proposals ─────────────────────────────────────────────────────────────────
+const PROPOSAL_STATUSES = [
+  { id:'draft', label:'Draft', color:'#888'    },
+  { id:'sent',  label:'Sent',  color:'#7c8cf8' },
+  { id:'won',   label:'Won',   color:'#4caf91' },
+  { id:'lost',  label:'Lost',  color:'#f55'    },
+];
+
+function renderProposals() {
+  const el = document.getElementById('proposals-list');
+  if (!el) return;
+  if (!proposals.length) {
+    el.innerHTML = `<div style="text-align:center;padding:32px 0;color:var(--text2);font-size:13px">No proposals yet</div>`;
+    return;
+  }
+  el.innerHTML = proposals.map(p => {
+    const st   = PROPOSAL_STATUSES.find(s=>s.id===p.status) || PROPOSAL_STATUSES[0];
+    const cust = p.customerName ? `<div style="font-size:11px;color:var(--text2);margin-bottom:2px">${esc(p.customerName)}</div>` : '';
+    const val  = p.value        ? `<div style="font-size:12px;font-weight:600;color:var(--text2);margin-top:4px">${esc(p.value)}</div>` : '';
+    const notes= p.notes        ? `<div style="font-size:12px;color:var(--text2);white-space:pre-wrap;margin-top:4px">${esc(p.notes)}</div>` : '';
+    return `<div style="background:var(--surface2);border:1px solid var(--border);border-left:3px solid ${st.color};border-radius:10px;padding:12px 14px;margin-bottom:10px">
+      <div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:8px">
+        <div style="flex:1">
+          ${cust}
+          <div style="font-size:13px;font-weight:600;margin-bottom:3px">${esc(p.title)}</div>
+          ${val}${notes}
+        </div>
+        <span style="font-size:10px;font-weight:600;padding:3px 8px;border-radius:20px;background:${st.color}20;color:${st.color};white-space:nowrap;flex-shrink:0">${st.label}</span>
+      </div>
+      <div style="display:flex;gap:6px">
+        <button onclick="openEditProposalForm('${p.id}')" style="flex:1;padding:6px;border-radius:7px;border:1px solid var(--border);background:var(--surface3);color:var(--text);font-size:11px;font-weight:600;cursor:pointer">✎ Edit</button>
+        <button onclick="cycleProposalStatus('${p.id}','${p.status}')" style="flex:1;padding:6px;border-radius:7px;border:1px solid var(--border);background:var(--surface3);color:var(--text);font-size:11px;font-weight:600;cursor:pointer">→ Next</button>
+        <button onclick="removeProposal('${p.id}')" style="padding:6px 10px;border-radius:7px;border:1px solid var(--border);background:var(--surface3);color:var(--text2);font-size:11px;cursor:pointer">✕</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+window.openProposalsPanel = function() {
+  document.getElementById('proposals-overlay').style.display = 'flex';
+};
+window.closeProposalsPanel = function(e) {
+  if (e && e.target !== document.getElementById('proposals-overlay')) return;
+  document.getElementById('proposals-overlay').style.display = 'none';
+};
+
+function populateProposalCustomers() {
+  const sel = document.getElementById('m-prop-cust');
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">— No customer —</option>' +
+    customers.map(c => `<option value="${c.id}"${c.id===cur?' selected':''}>${esc(c.name)}</option>`).join('');
+}
+
+window.openAddProposalForm = function() {
+  if (!db) return;
+  editingProposalId = null;
+  document.getElementById('proposal-form-title').textContent  = 'New Proposal';
+  document.getElementById('proposal-save-btn').textContent    = 'Add';
+  document.getElementById('m-prop-title').value  = '';
+  document.getElementById('m-prop-value').value  = '';
+  document.getElementById('m-prop-notes').value  = '';
+  document.getElementById('m-prop-status').value = 'draft';
+  populateProposalCustomers();
+  document.getElementById('proposal-form-overlay').style.display = 'flex';
+  setTimeout(() => document.getElementById('m-prop-title').focus(), 50);
+};
+
+window.openEditProposalForm = function(id) {
+  const p = proposals.find(x=>x.id===id); if (!p) return;
+  editingProposalId = id;
+  document.getElementById('proposal-form-title').textContent  = 'Edit Proposal';
+  document.getElementById('proposal-save-btn').textContent    = 'Save';
+  document.getElementById('m-prop-title').value  = p.title      || '';
+  document.getElementById('m-prop-value').value  = p.value      || '';
+  document.getElementById('m-prop-notes').value  = p.notes      || '';
+  document.getElementById('m-prop-status').value = p.status     || 'draft';
+  populateProposalCustomers();
+  document.getElementById('m-prop-cust').value   = p.customerId || '';
+  document.getElementById('proposal-form-overlay').style.display = 'flex';
+  setTimeout(() => document.getElementById('m-prop-title').focus(), 50);
+};
+
+window.closeProposalForm = function(e) {
+  if (e && e.target !== document.getElementById('proposal-form-overlay')) return;
+  document.getElementById('proposal-form-overlay').style.display = 'none';
+};
+
+window.saveProposal = async function() {
+  const title = document.getElementById('m-prop-title').value.trim(); if (!title) return;
+  const custId = document.getElementById('m-prop-cust').value;
+  const customerName = customers.find(c=>c.id===custId)?.name || '';
+  const value  = document.getElementById('m-prop-value').value.trim();
+  const notes  = document.getElementById('m-prop-notes').value.trim();
+  const status = document.getElementById('m-prop-status').value || 'draft';
+  document.getElementById('proposal-form-overlay').style.display = 'none';
+  if (editingProposalId) {
+    await updateDoc(doc(db,'proposals',editingProposalId), { title, customerId: custId, customerName, value, notes, status });
+  } else {
+    await addDoc(collection(db,'proposals'), { title, customerId: custId, customerName, value, notes, status, createdAt: serverTimestamp() });
+  }
+};
+
+window.cycleProposalStatus = async function(id, current) {
+  const idx  = PROPOSAL_STATUSES.findIndex(s=>s.id===current);
+  const next = PROPOSAL_STATUSES[(idx+1) % PROPOSAL_STATUSES.length].id;
+  await updateDoc(doc(db,'proposals',id), { status: next });
+};
+
+window.removeProposal = async function(id) {
+  if (!confirm('Delete this proposal?')) return;
+  await deleteDoc(doc(db,'proposals',id));
 };
 
 // ── Service Worker ────────────────────────────────────────────────────────────
