@@ -363,6 +363,15 @@ main{padding:14px 14px 96px;max-width:900px;margin:0 auto}
       <label>Project</label>
       <select id="m-proj"></select>
     </div>
+    <div class="field">
+      <label>Priority</label>
+      <select id="m-prio" style="width:100%;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:13px;outline:none">
+        <option value="low">Low</option>
+        <option value="normal" selected>Normal</option>
+        <option value="high">High</option>
+        <option value="critical">Critical</option>
+      </select>
+    </div>
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
       <button class="btn btn-primary" id="modal-save-btn" onclick="saveTask()">Add Task</button>
@@ -506,6 +515,14 @@ const STATUSES = [
   { id:'inprogress', label:'In Progress', color:'#47c8ff' },
   { id:'done',       label:'Done',        color:'#47ff8a' },
 ];
+
+const TASK_PRIORITIES = [
+  { id:'low',      label:'Low',      color:'#555'    },
+  { id:'normal',   label:'Normal',   color:'#47c8ff' },
+  { id:'high',     label:'High',     color:'#ffaa00' },
+  { id:'critical', label:'Critical', color:'#ff4757' },
+];
+const PRIO_ORDER = { critical:0, high:1, normal:2, low:3 };
 
 // ── Config ────────────────────────────────────────────────────────────────────
 function loadCfg()  { try { return JSON.parse(localStorage.getItem('tt_fb_config')); } catch { return null; } }
@@ -659,6 +676,7 @@ function renderBoard() {
   document.getElementById('cols').innerHTML = STATUSES.map(s => {
     let col = filtered.filter(t => t.status === s.id);
     if (s.id === 'inprogress') col.sort((a,b) => (a.inProgressAt?.seconds||0) - (b.inProgressAt?.seconds||0));
+    if (s.id === 'todo') col.sort((a,b) => (PRIO_ORDER[a.priority||'normal']??2) - (PRIO_ORDER[b.priority||'normal']??2));
     const cards = col.length
       ? col.map(t => cardHtml(t)).join('')
       : s.id === 'todo' && noProjects
@@ -683,8 +701,15 @@ function cardHtml(t) {
   const done    = t.status === 'done';
   const next    = t.status === 'todo' ? 'inprogress' : 'done';
   const nextLbl = t.status === 'todo' ? '→ In Progress' : '✓ Done';
+  const prio    = TASK_PRIORITIES.find(p => p.id === t.priority);
+  const prioBadge = prio && t.priority !== 'normal'
+    ? `<span style="font-size:9px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:1px 5px;border-radius:3px;background:${prio.color}20;color:${prio.color};border:1px solid ${prio.color}40;flex-shrink:0">${prio.label}</span>`
+    : '';
   return `<div class="card ${t.status}" data-id="${t.id}" data-status="${t.status}">
-    <div class="card-title${done?' done':''}">${esc(t.title)}</div>
+    <div style="display:flex;align-items:flex-start;gap:6px;margin-bottom:2px">
+      <div class="card-title${done?' done':''}" style="flex:1;margin-bottom:0">${esc(t.title)}</div>
+      ${prioBadge}
+    </div>
     <div class="card-meta">${esc(t.customerName||'')} › ${esc(t.projectName||'')}</div>
     <div class="card-actions">
       ${!done ? `<button class="card-btn advance" onclick="advance('${t.id}','${next}')">${nextLbl}</button>` : ''}
@@ -737,8 +762,9 @@ window.openEditModal = function(t) {
   cs.innerHTML = customers.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('');
   cs.value = t.customerId;
   populateModalProjects();
-  document.getElementById('m-proj').value  = t.projectId;
-  document.getElementById('m-title').value = t.title;
+  document.getElementById('m-proj').value   = t.projectId;
+  document.getElementById('m-title').value  = t.title;
+  document.getElementById('m-prio').value   = t.priority || 'normal';
   document.getElementById('modal').style.display = 'flex';
   setTimeout(() => document.getElementById('m-title').focus(), 80);
 };
@@ -765,15 +791,16 @@ window.saveTask = async function() {
   if (!cust || !proj) return;
   document.getElementById('modal').style.display = 'none';
 
+  const priority = document.getElementById('m-prio').value || 'normal';
   if (editingTaskId) {
     await updateDoc(doc(db,'tasks',editingTaskId), {
       title, customerId: cid, customerName: cust.name,
-      projectId: pid, projectName: proj.name,
+      projectId: pid, projectName: proj.name, priority,
     });
     editingTaskId = null;
   } else {
     await addDoc(collection(db,'tasks'), {
-      title, status:'todo',
+      title, status:'todo', priority,
       customerId:cid, customerName:cust.name,
       projectId:pid,  projectName:proj.name,
       createdAt: serverTimestamp(),
