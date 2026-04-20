@@ -501,7 +501,7 @@ button, input, select, textarea, a, [onclick], .nav-item, .task-act-btn, .task-a
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
           <div class="form-field" style="margin-bottom:0">
             <label>Your Name / Business</label>
-            <input type="text" id="billing-name" placeholder="e.g. Jane Smith Ltd" oninput="debounceSaveSettings()">
+            <input type="text" id="billing-name" placeholder="e.g. Jane Smith Ltd" oninput="debounceSaveSettings()" autocorrect="on" autocapitalize="words">
           </div>
           <div class="form-field" style="margin-bottom:0">
             <label>Email</label>
@@ -524,7 +524,7 @@ button, input, select, textarea, a, [onclick], .nav-item, .task-act-btn, .task-a
         </div>
         <div class="form-field" style="margin-bottom:0">
           <label>Address (shown on invoices)</label>
-          <textarea id="billing-address" rows="3" oninput="debounceSaveSettings()"
+          <textarea id="billing-address" rows="3" oninput="debounceSaveSettings()" autocorrect="on" autocapitalize="sentences"
             style="width:100%;padding:9px 11px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:'Plus Jakarta Sans',sans-serif;font-size:12px;outline:none;resize:vertical"
             placeholder="123 Main St&#10;London, W1A 1AA"></textarea>
         </div>
@@ -1388,7 +1388,7 @@ function openAddTaskModal() {
      </div>
      <div class="form-field">
        <label>Task</label>
-       <input id="m-task-title" type="text" placeholder="e.g. Update homepage copy">
+       <input id="m-task-title" type="text" placeholder="e.g. Update homepage copy" autocorrect="on" autocapitalize="sentences">
      </div>
      <div class="form-field">
        <label>Priority</label>
@@ -1443,7 +1443,7 @@ function openEditTaskModal(id) {
      </div>
      <div class="form-field">
        <label>Task</label>
-       <input id="m-task-title" type="text" value="${esc(t.title)}">
+       <input id="m-task-title" type="text" value="${esc(t.title)}" autocorrect="on" autocapitalize="sentences">
      </div>
      <div class="form-field">
        <label>Priority</label>
@@ -1505,7 +1505,7 @@ function openLogTimeModal(id) {
      </div>
      <div class="form-field">
        <label>Notes (optional)</label>
-       <input id="m-log-note" type="text" placeholder="What did you work on?">
+       <input id="m-log-note" type="text" placeholder="What did you work on?" autocorrect="on" autocapitalize="sentences">
      </div>
      <div id="m-error" style="display:none;color:var(--red);font-size:12px;margin-top:4px"></div>`,
     `<button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
@@ -1547,7 +1547,7 @@ function addTask(cid, cname, pid, pname) {
   if (!db) return;
   const prioOpts = TASK_PRIORITIES.map(p=>`<option value="${p.id}"${p.id==='normal'?' selected':''}>${p.label}</option>`).join('');
   showModal(`New Task — ${cname} › ${pname}`,
-    `<div class="form-field"><label>Task</label><input id="m-task-title" type="text" placeholder="e.g. Update homepage copy"></div>
+    `<div class="form-field"><label>Task</label><input id="m-task-title" type="text" placeholder="e.g. Update homepage copy" autocorrect="on" autocapitalize="sentences"></div>
      <div class="form-field"><label>Priority</label><select id="m-task-prio" style="width:100%;padding:9px 11px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none">${prioOpts}</select></div>
      <div id="m-error" style="display:none;color:var(--red);font-size:12px;margin-top:8px"></div>`,
     `<button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
@@ -1643,11 +1643,11 @@ function ideaModalBody(idea) {
     `<option value="${s.id}"${idea&&idea.status===s.id?' selected':''}>${s.label}</option>`).join('');
   return `<div class="form-field">
     <label>Title</label>
-    <input id="m-idea-title" type="text" placeholder="e.g. AI-powered invoice parser" value="${idea?esc(idea.title):''}">
+    <input id="m-idea-title" type="text" placeholder="e.g. AI-powered invoice parser" value="${idea?esc(idea.title):''}" autocorrect="on" autocapitalize="sentences">
   </div>
   <div class="form-field">
     <label>Notes (optional)</label>
-    <textarea id="m-idea-notes" rows="4" placeholder="Describe the idea, motivation, links…" style="width:100%;padding:9px 11px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:'Plus Jakarta Sans',sans-serif;font-size:12px;outline:none;resize:vertical">${idea?esc(idea.notes||''):''}</textarea>
+    <textarea id="m-idea-notes" rows="4" placeholder="Describe the idea, motivation, links…" autocorrect="on" autocapitalize="sentences" style="width:100%;padding:9px 11px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:'Plus Jakarta Sans',sans-serif;font-size:12px;outline:none;resize:vertical">${idea?esc(idea.notes||''):''}</textarea>
   </div>
   <div class="form-field">
     <label>Status</label>
@@ -1736,7 +1736,7 @@ function openLogTimeIdeaModal(id) {
      </div>
      <div class="form-field">
        <label>Notes (optional)</label>
-       <input id="m-log-note" type="text" placeholder="What did you work on?">
+       <input id="m-log-note" type="text" placeholder="What did you work on?" autocorrect="on" autocapitalize="sentences">
      </div>
      <div id="m-error" style="display:none;color:var(--red);font-size:12px;margin-top:4px"></div>`,
     `<button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
@@ -1892,7 +1892,7 @@ window.closeModal = closeModal;
 
 function openAddCustomer() {
   showModal('Add Customer',
-    `<div class="form-field"><label>Name</label><input id="m-name" type="text" placeholder="e.g. Acme Ltd"></div>
+    `<div class="form-field"><label>Name</label><input id="m-name" type="text" placeholder="e.g. Acme Ltd" autocorrect="on" autocapitalize="words"></div>
      <div id="m-error" style="display:none;color:var(--red);font-size:12px;margin-top:8px"></div>`,
     `<button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
      <button class="btn btn-primary" onclick="doAddCustomer()">Add</button>`);
@@ -1915,7 +1915,7 @@ window.doAddCustomer = doAddCustomer;
 function openAddProject(custId, custName) {
   const sym = settings.currency || '£';
   showModal(`Add Project — ${custName}`,
-    `<div class="form-field"><label>Project Name</label><input id="m-proj" type="text" placeholder="e.g. Website Redesign"></div>
+    `<div class="form-field"><label>Project Name</label><input id="m-proj" type="text" placeholder="e.g. Website Redesign" autocorrect="on" autocapitalize="words"></div>
      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
        <div class="form-field" style="margin-bottom:0"><label>Budget Hours (optional)</label><input id="m-budget" type="number" min="0" step="0.5" placeholder="e.g. 40"></div>
        <div class="form-field" style="margin-bottom:0"><label>Rate ${sym}/hr (optional)</label><input id="m-rate" type="number" min="0" step="0.5" placeholder="${settings.billingRate ? 'Default: '+settings.billingRate : 'e.g. 85'}"></div>
