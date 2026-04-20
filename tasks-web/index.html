@@ -242,7 +242,7 @@ main{padding:14px 14px 96px;max-width:900px;margin:0 auto}
     </button>
   </div>
   <div class="drawer-footer">
-    Nimble Panda — Task Board<br>
+    Nimble Panda — Task Board v1.1<br>
     Synced via Firebase Firestore
   </div>
 </div>
@@ -540,7 +540,7 @@ function subscribeAll() {
   }, err => showSyncError('Customers: ' + err.message));
 
   onSnapshot(collection(db,'projects'), snap => {
-    allProjects = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+    allProjects = snap.docs.map(d => ({ id:d.id, ...d.data() })).sort((a,b) => a.name.localeCompare(b.name));
     customers.forEach(c => { c.projects = allProjects.filter(p => p.customerId === c.id); });
     populateFilters(); renderBoard(); renderManageList();
   }, err => showSyncError('Projects: ' + err.message));
