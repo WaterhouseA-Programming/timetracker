@@ -1,4 +1,4 @@
-const CACHE = 'tt-app-v1';
+const CACHE = 'tt-app-v2';
 const SHELL = ['./', './index.html', './manifest.json'];
 
 self.addEventListener('install', e => {
