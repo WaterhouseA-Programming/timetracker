@@ -336,7 +336,7 @@ button, input, select, textarea, a, [onclick], .nav-item, .task-act-btn, .task-a
     <div class="nav-item" data-page="invoices"         data-icon="£" onclick="showPage('invoices',this)"><span class="nav-label">Invoices</span></div>
     <div class="nav-item" data-page="manage"           data-icon="⊞" onclick="showPage('manage',this)"><span class="nav-label">Projects</span></div>
     <div class="nav-item" data-page="ideas"            data-icon="💡" onclick="showPage('ideas',this)"><span class="nav-label">Ideas</span></div>
-    <div class="nav-item" data-page="proposals"        data-icon="📋" onclick="showPage('proposals',this)"><span class="nav-label">Proposals</span></div>
+    <div class="nav-item" data-page="proposals"        data-icon="📋" onclick="showPage('proposals',this)"><span class="nav-label">Opportunities</span></div>
     <div class="nav-item" data-page="settings"         data-icon="⚙" onclick="showPage('settings',this)"><span class="nav-label">Settings</span></div>
   </nav>
 
@@ -548,13 +548,13 @@ button, input, select, textarea, a, [onclick], .nav-item, .task-act-btn, .task-a
       <div id="ideas-content"><div class="empty"><div class="icon">💡</div>No ideas yet</div></div>
     </div>
 
-    <!-- Proposals page -->
+    <!-- Opportunities page -->
     <div class="page" id="page-proposals">
       <div class="page-header">
-        <div class="page-title">Proposals</div>
-        <button class="btn btn-primary" onclick="openAddProposalModal()" style="margin-left:auto">+ New Proposal</button>
+        <div class="page-title">Opportunities</div>
+        <button class="btn btn-primary" onclick="openAddProposalModal()" style="margin-left:auto">+ New Opportunity</button>
       </div>
-      <div id="proposals-content"><div class="empty"><div class="icon">📋</div>No proposals yet</div></div>
+      <div id="proposals-content"><div class="empty"><div class="icon">📋</div>No opportunities yet</div></div>
     </div>
 
   </div>
@@ -1788,33 +1788,31 @@ async function doLogTimeIdea(id) {
 window.doLogTimeIdea = doLogTimeIdea;
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// UI — PROPOSALS
+// UI — OPPORTUNITIES
 // ═══════════════════════════════════════════════════════════════════════════════
 const PROPOSAL_STATUSES = [
-  { id:'draft', label:'Draft', color:'#888'    },
-  { id:'sent',  label:'Sent',  color:'#7c8cf8' },
-  { id:'won',   label:'Won',   color:'#4caf91' },
-  { id:'lost',  label:'Lost',  color:'#f55'    },
+  { id:'new',       label:'New',       color:'#7c8cf8' },
+  { id:'exploring', label:'Exploring', color:'#f5a32a' },
+  { id:'proposed',  label:'Proposed',  color:'#47c8ff' },
+  { id:'won',       label:'Won',       color:'#4caf91' },
+  { id:'lost',      label:'Lost',      color:'#f55'    },
 ];
 
 function renderProposals() {
   const el = document.getElementById('proposals-content');
   if (!el) return;
   if (!proposals.length) {
-    el.innerHTML = `<div class="empty"><div class="icon">📋</div>No proposals yet</div>`;
+    el.innerHTML = `<div class="empty"><div class="icon">📋</div>No opportunities yet</div>`;
     return;
   }
   el.innerHTML = proposals.map(p => {
-    const st   = PROPOSAL_STATUSES.find(s => s.id === p.status) || PROPOSAL_STATUSES[0];
-    const cust = p.customerName ? `<div style="font-size:11px;color:var(--muted);margin-bottom:3px">${esc(p.customerName)}</div>` : '';
-    const val  = p.value        ? `<span style="font-size:12px;font-weight:600;color:var(--muted2)">${esc(p.value)}</span>` : '';
-    const notes= p.notes        ? `<div style="font-size:12px;color:var(--muted);margin-top:6px;white-space:pre-wrap">${esc(p.notes)}</div>` : '';
+    const st    = PROPOSAL_STATUSES.find(s => s.id === p.status) || PROPOSAL_STATUSES[0];
+    const notes = p.notes ? `<div style="font-size:12px;color:var(--muted);margin-top:6px;white-space:pre-wrap">${esc(p.notes)}</div>` : '';
     return `<div class="idea-card" style="border-left:3px solid ${st.color}">
       <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:10px">
         <div style="flex:1;min-width:0">
-          ${cust}
           <div style="font-size:13px;font-weight:600;margin-bottom:4px">${esc(p.title)}</div>
-          ${val}${notes}
+          ${notes}
         </div>
         <span class="idea-status-pill" style="background:${st.color}20;color:${st.color}">${st.label}</span>
       </div>
@@ -1830,23 +1828,17 @@ window.renderProposals = renderProposals;
 
 function openAddProposalModal() {
   if (!db) return;
-  const custOpts = customers.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('');
-  showModal('New Proposal',
+  showModal('New Opportunity',
     `<div class="form-field"><label>Title</label>
-       <input id="m-prop-title" type="text" placeholder="e.g. Website redesign for Acme" autocorrect="on" autocapitalize="sentences"></div>
-     <div class="form-field"><label>Customer (optional)</label>
-       <select id="m-prop-cust" style="width:100%;padding:9px 11px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none">
-         <option value="">— No customer —</option>${custOpts}</select></div>
-     <div class="form-field"><label>Value (optional)</label>
-       <input id="m-prop-value" type="text" placeholder="e.g. £2,500" autocorrect="off" autocapitalize="none"></div>
+       <input id="m-prop-title" type="text" placeholder="e.g. NHS tender, referral from John…" autocorrect="on" autocapitalize="sentences"></div>
      <div class="form-field"><label>Status</label>
        <select id="m-prop-status" style="width:100%;padding:9px 11px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none">
-         <option value="draft">Draft</option><option value="sent">Sent</option>
-         <option value="won">Won</option><option value="lost">Lost</option></select></div>
+         <option value="new">New</option><option value="exploring">Exploring</option>
+         <option value="proposed">Proposed</option><option value="won">Won</option><option value="lost">Lost</option></select></div>
      <div class="form-field"><label>Notes (optional)</label>
        <textarea id="m-prop-notes" rows="3" autocorrect="on" autocapitalize="sentences"
          style="width:100%;padding:9px 11px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:'Plus Jakarta Sans',sans-serif;font-size:12px;outline:none;resize:vertical"
-         placeholder="Scope, deadline, contact…"></textarea></div>
+         placeholder="Contact, value, deadline…"></textarea></div>
      <div id="m-error" style="display:none;color:var(--red);font-size:12px;margin-top:8px"></div>`,
     `<button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
      <button class="btn btn-primary" onclick="doAddProposal()">Add</button>`);
@@ -1855,30 +1847,21 @@ function openAddProposalModal() {
 window.openAddProposalModal = openAddProposalModal;
 
 async function doAddProposal() {
-  const title = document.getElementById('m-prop-title')?.value.trim(); if (!title) return;
-  const custId = document.getElementById('m-prop-cust')?.value || '';
-  const customerName = customers.find(c => c.id === custId)?.name || '';
-  const value  = document.getElementById('m-prop-value')?.value.trim() || '';
+  const title  = document.getElementById('m-prop-title')?.value.trim(); if (!title) return;
   const notes  = document.getElementById('m-prop-notes')?.value.trim() || '';
-  const status = document.getElementById('m-prop-status')?.value || 'draft';
+  const status = document.getElementById('m-prop-status')?.value || 'new';
   closeModal();
   const { collection, addDoc, serverTimestamp } = _fs;
-  await addDoc(collection(db,'proposals'), { title, customerId: custId, customerName, value, notes, status, createdAt: serverTimestamp() });
+  await addDoc(collection(db,'proposals'), { title, notes, status, createdAt: serverTimestamp() });
 }
 window.doAddProposal = doAddProposal;
 
 function openEditProposalModal(id) {
   const p = proposals.find(x => x.id === id); if (!p) return;
-  const custOpts = customers.map(c => `<option value="${c.id}"${c.id===p.customerId?' selected':''}>${esc(c.name)}</option>`).join('');
   const statusOpts = PROPOSAL_STATUSES.map(s => `<option value="${s.id}"${s.id===p.status?' selected':''}>${s.label}</option>`).join('');
-  showModal('Edit Proposal',
+  showModal('Edit Opportunity',
     `<div class="form-field"><label>Title</label>
        <input id="m-prop-title" type="text" value="${esc(p.title)}" autocorrect="on" autocapitalize="sentences"></div>
-     <div class="form-field"><label>Customer (optional)</label>
-       <select id="m-prop-cust" style="width:100%;padding:9px 11px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none">
-         <option value="">— No customer —</option>${custOpts}</select></div>
-     <div class="form-field"><label>Value (optional)</label>
-       <input id="m-prop-value" type="text" value="${esc(p.value||'')}" autocorrect="off" autocapitalize="none"></div>
      <div class="form-field"><label>Status</label>
        <select id="m-prop-status" style="width:100%;padding:9px 11px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none">${statusOpts}</select></div>
      <div class="form-field"><label>Notes (optional)</label>
@@ -1891,15 +1874,12 @@ function openEditProposalModal(id) {
 window.openEditProposalModal = openEditProposalModal;
 
 async function doEditProposal(id) {
-  const title = document.getElementById('m-prop-title')?.value.trim(); if (!title) return;
-  const custId = document.getElementById('m-prop-cust')?.value || '';
-  const customerName = customers.find(c => c.id === custId)?.name || '';
-  const value  = document.getElementById('m-prop-value')?.value.trim() || '';
+  const title  = document.getElementById('m-prop-title')?.value.trim(); if (!title) return;
   const notes  = document.getElementById('m-prop-notes')?.value.trim() || '';
-  const status = document.getElementById('m-prop-status')?.value || 'draft';
+  const status = document.getElementById('m-prop-status')?.value || 'new';
   closeModal();
   const { doc, updateDoc } = _fs;
-  await updateDoc(doc(db,'proposals',id), { title, customerId: custId, customerName, value, notes, status });
+  await updateDoc(doc(db,'proposals',id), { title, notes, status });
 }
 window.doEditProposal = doEditProposal;
 
@@ -1912,7 +1892,7 @@ async function cycleProposalStatus(id, current) {
 window.cycleProposalStatus = cycleProposalStatus;
 
 async function removeProposal(id) {
-  if (!confirm('Delete this proposal?')) return;
+  if (!confirm('Delete this opportunity?')) return;
   const { doc, deleteDoc } = _fs;
   await deleteDoc(doc(db,'proposals',id));
 }

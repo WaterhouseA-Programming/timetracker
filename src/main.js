@@ -59,7 +59,7 @@ autoUpdater.on('update-downloaded', () => {
     buttons: ['Install now', 'Later'],
     defaultId: 0,
   }).then(({ response }) => {
-    if (response === 0) autoUpdater.quitAndInstall();
+    if (response === 0) { isQuitting = true; autoUpdater.quitAndInstall(false, true); }
   });
 });
 
@@ -111,6 +111,7 @@ let mainWindow        = null;
 let tray              = null;
 let idleDialogOpen    = false;
 let longRunDialogOpen = false;
+let isQuitting        = false; // set true before any intentional quit so the close handler doesn't block it
 
 // ─── Window ───────────────────────────────────────────────────────────────────
 function createWindow() {
@@ -131,8 +132,12 @@ function createWindow() {
   });
 
   mainWindow.loadFile(path.join(__dirname, 'index.html'));
-  mainWindow.once('ready-to-show', () => { checkForUpdates(); }); // stays in tray until opened
-  mainWindow.on('close', e => { e.preventDefault(); mainWindow.hide(); });
+  mainWindow.once('ready-to-show', () => {
+    checkForUpdates();
+    // Show the window unless this is a boot launch via auto-start (login item)
+    if (!app.getLoginItemSettings().wasOpenedAtLogin) mainWindow.show();
+  });
+  mainWindow.on('close', e => { if (isQuitting) return; e.preventDefault(); mainWindow.hide(); });
   mainWindow.on('closed', () => { mainWindow = null; });
 }
 

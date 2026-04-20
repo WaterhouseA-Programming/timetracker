@@ -334,7 +334,7 @@ main{padding:14px 14px 96px;max-width:900px;margin:0 auto}
     <div class="quick-bar">
       <button class="quick-btn quick-btn-manage" onclick="openManagePanel()">🏢 Customers &amp; Projects</button>
       <button class="quick-btn quick-btn-ideas" onclick="openIdeasPanel()">💡 Ideas</button>
-      <button class="quick-btn quick-btn-proposals" onclick="openProposalsPanel()">📋 Proposals</button>
+      <button class="quick-btn quick-btn-proposals" onclick="openProposalsPanel()">📋 Opportunities</button>
       <button class="quick-btn quick-btn-settings" onclick="openDrawer()">⚙ Settings</button>
     </div>
     <div class="cols" id="cols"></div>
@@ -435,54 +435,44 @@ main{padding:14px 14px 96px;max-width:900px;margin:0 auto}
   </div>
 </div>
 
-<!-- Proposals panel -->
+<!-- Opportunities panel -->
 <div class="overlay" id="proposals-overlay" style="display:none" onclick="closeProposalsPanel(event)">
   <div class="modal modal-tall" onclick="event.stopPropagation()">
     <div class="modal-handle"></div>
     <div class="modal-hdr">
-      <h3>📋 Proposals</h3>
+      <h3>📋 Opportunities</h3>
       <button class="icon-btn" style="width:28px;height:28px;font-size:13px" onclick="closeProposalsPanel()">✕</button>
     </div>
     <div id="proposals-list" style="flex:1;overflow-y:auto;padding:0 18px"></div>
     <div style="padding:14px 18px;border-top:1px solid var(--border);flex-shrink:0">
-      <button class="btn btn-primary" style="width:100%" onclick="openAddProposalForm()">+ New Proposal</button>
+      <button class="btn btn-primary" style="width:100%" onclick="openAddProposalForm()">+ New Opportunity</button>
     </div>
   </div>
 </div>
 
-<!-- Add/Edit proposal modal -->
+<!-- Add/Edit opportunity modal -->
 <div class="overlay" id="proposal-form-overlay" style="display:none" onclick="closeProposalForm(event)">
   <div class="modal" onclick="event.stopPropagation()">
     <div class="modal-handle"></div>
-    <h3 id="proposal-form-title">New Proposal</h3>
+    <h3 id="proposal-form-title">New Opportunity</h3>
     <div class="field">
       <label>Title</label>
-      <input type="text" id="m-prop-title" placeholder="e.g. Website redesign for Acme"
+      <input type="text" id="m-prop-title" placeholder="e.g. NHS tender, referral from John…"
              autocorrect="on" autocapitalize="sentences" spellcheck="true">
-    </div>
-    <div class="field">
-      <label>Customer</label>
-      <select id="m-prop-cust" style="width:100%;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:13px;outline:none">
-        <option value="">— No customer —</option>
-      </select>
-    </div>
-    <div class="field">
-      <label>Value (optional)</label>
-      <input type="text" id="m-prop-value" placeholder="e.g. £2,500"
-             autocorrect="off" autocapitalize="none" inputmode="decimal">
     </div>
     <div class="field">
       <label>Status</label>
       <select id="m-prop-status" style="width:100%;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:13px;outline:none">
-        <option value="draft">Draft</option>
-        <option value="sent">Sent</option>
+        <option value="new">New</option>
+        <option value="exploring">Exploring</option>
+        <option value="proposed">Proposed</option>
         <option value="won">Won</option>
         <option value="lost">Lost</option>
       </select>
     </div>
     <div class="field">
       <label>Notes (optional)</label>
-      <textarea id="m-prop-notes" rows="3" placeholder="Scope, deadline, contact…"
+      <textarea id="m-prop-notes" rows="3" placeholder="Contact, value, deadline…"
         autocorrect="on" autocapitalize="sentences"
         style="width:100%;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-family:'Plus Jakarta Sans',sans-serif;font-size:13px;outline:none;resize:vertical"></textarea>
     </div>
@@ -1062,32 +1052,30 @@ window.removeIdea = async function(id) {
   await deleteDoc(doc(db,'ideas',id));
 };
 
-// ── Proposals ─────────────────────────────────────────────────────────────────
+// ── Opportunities ─────────────────────────────────────────────────────────────
 const PROPOSAL_STATUSES = [
-  { id:'draft', label:'Draft', color:'#888'    },
-  { id:'sent',  label:'Sent',  color:'#7c8cf8' },
-  { id:'won',   label:'Won',   color:'#4caf91' },
-  { id:'lost',  label:'Lost',  color:'#f55'    },
+  { id:'new',       label:'New',       color:'#7c8cf8' },
+  { id:'exploring', label:'Exploring', color:'#f5a32a' },
+  { id:'proposed',  label:'Proposed',  color:'#47c8ff' },
+  { id:'won',       label:'Won',       color:'#4caf91' },
+  { id:'lost',      label:'Lost',      color:'#f55'    },
 ];
 
 function renderProposals() {
   const el = document.getElementById('proposals-list');
   if (!el) return;
   if (!proposals.length) {
-    el.innerHTML = `<div style="text-align:center;padding:32px 0;color:var(--text2);font-size:13px">No proposals yet</div>`;
+    el.innerHTML = `<div style="text-align:center;padding:32px 0;color:var(--text2);font-size:13px">No opportunities yet</div>`;
     return;
   }
   el.innerHTML = proposals.map(p => {
-    const st   = PROPOSAL_STATUSES.find(s=>s.id===p.status) || PROPOSAL_STATUSES[0];
-    const cust = p.customerName ? `<div style="font-size:11px;color:var(--text2);margin-bottom:2px">${esc(p.customerName)}</div>` : '';
-    const val  = p.value        ? `<div style="font-size:12px;font-weight:600;color:var(--text2);margin-top:4px">${esc(p.value)}</div>` : '';
-    const notes= p.notes        ? `<div style="font-size:12px;color:var(--text2);white-space:pre-wrap;margin-top:4px">${esc(p.notes)}</div>` : '';
+    const st    = PROPOSAL_STATUSES.find(s=>s.id===p.status) || PROPOSAL_STATUSES[0];
+    const notes = p.notes ? `<div style="font-size:12px;color:var(--text2);white-space:pre-wrap;margin-top:4px">${esc(p.notes)}</div>` : '';
     return `<div style="background:var(--surface2);border:1px solid var(--border);border-left:3px solid ${st.color};border-radius:10px;padding:12px 14px;margin-bottom:10px">
       <div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:8px">
         <div style="flex:1">
-          ${cust}
           <div style="font-size:13px;font-weight:600;margin-bottom:3px">${esc(p.title)}</div>
-          ${val}${notes}
+          ${notes}
         </div>
         <span style="font-size:10px;font-weight:600;padding:3px 8px;border-radius:20px;background:${st.color}20;color:${st.color};white-space:nowrap;flex-shrink:0">${st.label}</span>
       </div>
@@ -1108,23 +1096,14 @@ window.closeProposalsPanel = function(e) {
   document.getElementById('proposals-overlay').style.display = 'none';
 };
 
-function populateProposalCustomers() {
-  const sel = document.getElementById('m-prop-cust');
-  const cur = sel.value;
-  sel.innerHTML = '<option value="">— No customer —</option>' +
-    customers.map(c => `<option value="${c.id}"${c.id===cur?' selected':''}>${esc(c.name)}</option>`).join('');
-}
-
 window.openAddProposalForm = function() {
   if (!db) return;
   editingProposalId = null;
-  document.getElementById('proposal-form-title').textContent  = 'New Proposal';
+  document.getElementById('proposal-form-title').textContent  = 'New Opportunity';
   document.getElementById('proposal-save-btn').textContent    = 'Add';
   document.getElementById('m-prop-title').value  = '';
-  document.getElementById('m-prop-value').value  = '';
   document.getElementById('m-prop-notes').value  = '';
-  document.getElementById('m-prop-status').value = 'draft';
-  populateProposalCustomers();
+  document.getElementById('m-prop-status').value = 'new';
   document.getElementById('proposal-form-overlay').style.display = 'flex';
   setTimeout(() => document.getElementById('m-prop-title').focus(), 50);
 };
@@ -1132,14 +1111,11 @@ window.openAddProposalForm = function() {
 window.openEditProposalForm = function(id) {
   const p = proposals.find(x=>x.id===id); if (!p) return;
   editingProposalId = id;
-  document.getElementById('proposal-form-title').textContent  = 'Edit Proposal';
+  document.getElementById('proposal-form-title').textContent  = 'Edit Opportunity';
   document.getElementById('proposal-save-btn').textContent    = 'Save';
-  document.getElementById('m-prop-title').value  = p.title      || '';
-  document.getElementById('m-prop-value').value  = p.value      || '';
-  document.getElementById('m-prop-notes').value  = p.notes      || '';
-  document.getElementById('m-prop-status').value = p.status     || 'draft';
-  populateProposalCustomers();
-  document.getElementById('m-prop-cust').value   = p.customerId || '';
+  document.getElementById('m-prop-title').value  = p.title  || '';
+  document.getElementById('m-prop-notes').value  = p.notes  || '';
+  document.getElementById('m-prop-status').value = p.status || 'new';
   document.getElementById('proposal-form-overlay').style.display = 'flex';
   setTimeout(() => document.getElementById('m-prop-title').focus(), 50);
 };
@@ -1150,17 +1126,14 @@ window.closeProposalForm = function(e) {
 };
 
 window.saveProposal = async function() {
-  const title = document.getElementById('m-prop-title').value.trim(); if (!title) return;
-  const custId = document.getElementById('m-prop-cust').value;
-  const customerName = customers.find(c=>c.id===custId)?.name || '';
-  const value  = document.getElementById('m-prop-value').value.trim();
+  const title  = document.getElementById('m-prop-title').value.trim(); if (!title) return;
   const notes  = document.getElementById('m-prop-notes').value.trim();
-  const status = document.getElementById('m-prop-status').value || 'draft';
+  const status = document.getElementById('m-prop-status').value || 'new';
   document.getElementById('proposal-form-overlay').style.display = 'none';
   if (editingProposalId) {
-    await updateDoc(doc(db,'proposals',editingProposalId), { title, customerId: custId, customerName, value, notes, status });
+    await updateDoc(doc(db,'proposals',editingProposalId), { title, notes, status });
   } else {
-    await addDoc(collection(db,'proposals'), { title, customerId: custId, customerName, value, notes, status, createdAt: serverTimestamp() });
+    await addDoc(collection(db,'proposals'), { title, notes, status, createdAt: serverTimestamp() });
   }
 };
 
@@ -1171,7 +1144,7 @@ window.cycleProposalStatus = async function(id, current) {
 };
 
 window.removeProposal = async function(id) {
-  if (!confirm('Delete this proposal?')) return;
+  if (!confirm('Delete this opportunity?')) return;
   await deleteDoc(doc(db,'proposals',id));
 };
 
