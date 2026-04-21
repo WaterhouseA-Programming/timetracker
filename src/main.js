@@ -65,9 +65,9 @@ autoUpdater.on('update-downloaded', () => {
 
 ipcMain.handle('check-for-updates', () => { checkForUpdates(); });
 
-// ─── Local-only state (active timer mirror + tray cache) ──────────────────────
-// Written by renderer via 'timer-state-update' IPC whenever timer starts/stops.
-let activeTimer = null;   // { customerName, projectName, category, startTime }
+// ─── Local-only state (active timers mirror + tray cache) ─────────────────────
+// Written by renderer via 'timer-state-update' IPC whenever timers change.
+let activeTimers = [];    // [{ key, customerName, projectName, category, startTime, ... }]
 let trayCacheCustomers = []; // [{ name, projects: [{id,name}] }] for Switch menu
 
 // ─── Settings (auto-start is the only OS-level setting) ───────────────────────
@@ -143,53 +143,68 @@ function createWindow() {
 
 // ─── Tray ─────────────────────────────────────────────────────────────────────
 function buildTrayMenu() {
-  const timerLabel = activeTimer
-    ? `⏹  Stop  (${activeTimer.customerName} › ${activeTimer.projectName})`
-    : '▶  Start Timer';
-
+  const hasTimers = activeTimers.length > 0;
   const switchItems = buildSwitchItems();
+  const items = [];
 
-  return Menu.buildFromTemplate([
-    {
-      label: timerLabel,
-      click: () => {
-        if (activeTimer) {
-          if (mainWindow) mainWindow.webContents.send('tray-stop-timer');
-          else { activeTimer = null; updateTrayTicker(); }
-        } else {
-          createWindow();
-        }
-      },
+  if (hasTimers) {
+    // Individual stop items for each running timer
+    for (const t of activeTimers) {
+      const key = t.key;
+      items.push({
+        label: `⏹  Stop  (${t.customerName} › ${t.projectName})`,
+        click: () => {
+          if (mainWindow) mainWindow.webContents.send('tray-stop-timer', key);
+          else { activeTimers = activeTimers.filter(x => x.key !== key); updateTrayTicker(); }
+        },
+      });
+    }
+    if (activeTimers.length > 1) {
+      items.push({
+        label: '⏹  Stop All Timers',
+        click: () => {
+          if (mainWindow) mainWindow.webContents.send('tray-stop-all-timers');
+          else { activeTimers = []; updateTrayTicker(); }
+        },
+      });
+    }
+  } else {
+    items.push({
+      label: '▶  Start Timer',
+      click: () => createWindow(),
+    });
+  }
+
+  items.push({ type: 'separator' });
+  items.push({
+    label: 'Switch Project',
+    submenu: switchItems.length
+      ? switchItems
+      : [{ label: 'No projects yet', enabled: false }],
+  });
+  items.push({ type: 'separator' });
+  items.push({ label: getTodayLabel(), enabled: false });
+  items.push({ type: 'separator' });
+  items.push({ label: 'Open Window', click: () => createWindow() });
+  items.push({ type: 'separator' });
+  items.push({
+    label: 'Quit',
+    click: () => {
+      if (hasTimers && mainWindow) mainWindow.webContents.send('tray-stop-all-timers');
+      setTimeout(() => app.exit(0), 400);
     },
-    { type: 'separator' },
-    {
-      label: 'Switch Project',
-      submenu: switchItems.length
-        ? switchItems
-        : [{ label: 'No projects yet', enabled: false }],
-    },
-    { type: 'separator' },
-    { label: getTodayLabel(), enabled: false },
-    { type: 'separator' },
-    { label: 'Open Window', click: () => createWindow() },
-    { type: 'separator' },
-    {
-      label: 'Quit',
-      click: () => {
-        if (activeTimer && mainWindow) mainWindow.webContents.send('tray-stop-timer');
-        setTimeout(() => app.exit(0), 400);
-      },
-    },
-  ]);
+  });
+
+  return Menu.buildFromTemplate(items);
 }
 
 function buildSwitchItems() {
   const items = [];
   for (const c of trayCacheCustomers) {
     for (const p of (c.projects || [])) {
-      const isActive = activeTimer &&
-        activeTimer.customerId === c.id &&
-        activeTimer.projectId  === p.id;
+      const key = `${c.id}:${p.id}`;
+      const existing = activeTimers.find(t => t.key === key);
+      const isActive = !!existing;
       items.push({
         label: `${c.name} › ${p.name}${isActive ? ' ✓' : ''}`,
         click: () => {
@@ -197,7 +212,7 @@ function buildSwitchItems() {
             mainWindow.webContents.send('tray-start-timer', {
               customerId: c.id, customerName: c.name,
               projectId: p.id,  projectName:  p.name,
-              category: activeTimer?.category || 'Coding',
+              category: existing?.category || activeTimers[0]?.category || 'Coding',
             });
           } else {
             createWindow();
@@ -210,17 +225,29 @@ function buildSwitchItems() {
 }
 
 function getTodayLabel() {
-  if (!activeTimer) return '📊  Today: no active timer';
-  const secs = Math.floor((Date.now() - activeTimer.startTime) / 1000);
-  return `📊  ${activeTimer.customerName} › ${activeTimer.projectName} — ${fmtDur(secs)}`;
+  if (!activeTimers.length) return '📊  Today: no active timer';
+  if (activeTimers.length === 1) {
+    const t = activeTimers[0];
+    const secs = Math.floor((Date.now() - t.startTime) / 1000);
+    return `📊  ${t.customerName} › ${t.projectName} — ${fmtDur(secs)}`;
+  }
+  // Multiple timers: show total elapsed
+  const totalSecs = activeTimers.reduce((sum, t) => sum + Math.floor((Date.now() - t.startTime) / 1000), 0);
+  return `📊  ${activeTimers.length} timers running — ${fmtDur(totalSecs)} total`;
 }
 
 function updateTrayTicker() {
   if (!tray) return;
-  if (activeTimer) {
-    const secs = Math.floor((Date.now() - activeTimer.startTime) / 1000);
-    const h = Math.floor(secs / 3600), m = Math.floor((secs % 3600) / 60);
-    tray.setToolTip(`⏱ ${h > 0 ? `${h}h ${m}m` : `${m}m`} — ${activeTimer.customerName} › ${activeTimer.projectName}`);
+  if (activeTimers.length > 0) {
+    if (activeTimers.length === 1) {
+      const t = activeTimers[0];
+      const secs = Math.floor((Date.now() - t.startTime) / 1000);
+      const h = Math.floor(secs / 3600), m = Math.floor((secs % 3600) / 60);
+      tray.setToolTip(`⏱ ${h > 0 ? `${h}h ${m}m` : `${m}m`} — ${t.customerName} › ${t.projectName}`);
+    } else {
+      const totalSecs = activeTimers.reduce((sum, t) => sum + Math.floor((Date.now() - t.startTime) / 1000), 0);
+      tray.setToolTip(`⏱ ${activeTimers.length} timers — ${fmtDur(totalSecs)} total`);
+    }
     tray.setImage(makeTrayIcon(true));
   } else {
     tray.setToolTip('TimeTracker — idle');
@@ -246,18 +273,18 @@ let _lastTimerStopTime  = 0; // set in timer-state-update handler below
 
 function checkClaudeActivity() {
   // Don't prompt if a timer is already running
-  if (activeTimer) { _claudeMins = 0; return; }
+  if (activeTimers.length > 0) { _claudeMins = 0; return; }
   // Don't prompt within 30 minutes of a timer stopping (user just finished work)
   if (Date.now() - _lastTimerStopTime < 30 * 60_000) { _claudeMins = 0; return; }
 
   exec('tasklist /FI "IMAGENAME eq claude.exe" /NH /FO CSV 2>nul', (err, out) => {
     // Re-check both conditions after the async exec gap
-    if (activeTimer) { _claudeMins = 0; return; }
+    if (activeTimers.length > 0) { _claudeMins = 0; return; }
     if (Date.now() - _lastTimerStopTime < 30 * 60_000) { _claudeMins = 0; return; }
     if (err || !out.toLowerCase().includes('claude.exe')) { _claudeMins = 0; return; }
     _claudeMins++;
     if (_claudeMins >= 5 && Date.now() > _claudeSnoozedUntil) {
-      if (activeTimer) { _claudeMins = 0; return; } // one final guard
+      if (activeTimers.length > 0) { _claudeMins = 0; return; } // one final guard
       _claudeMins         = 0;
       _claudeSnoozedUntil = Date.now() + 30 * 60_000; // snooze 30 min
       promptClaudeTime();
@@ -284,18 +311,22 @@ function promptClaudeTime() {
 const IDLE_THRESHOLD = 10 * 60;
 
 function checkIdle() {
-  if (!activeTimer || idleDialogOpen || !mainWindow) return;
+  if (!activeTimers.length || idleDialogOpen || !mainWindow) return;
   let idleSecs;
   try { idleSecs = powerMonitor.getSystemIdleTime(); } catch { return; }
   if (idleSecs < IDLE_THRESHOLD) return;
 
   idleDialogOpen = true;
   const mins = Math.floor(idleSecs / 60);
+  const timerDesc = activeTimers.length === 1
+    ? `"${activeTimers[0].customerName} › ${activeTimers[0].projectName}"`
+    : `${activeTimers.length} running timers`;
+
   dialog.showMessageBox(mainWindow, {
     type: 'question',
     title: "You've been idle",
     message: `Away for ${mins} minutes`,
-    detail: `Still tracking "${activeTimer.customerName} › ${activeTimer.projectName}"?`,
+    detail: `Still tracking ${timerDesc}?`,
     buttons: ['Keep all time', `Trim idle (−${mins}m)`, 'Stop & discard'],
     defaultId: 1, cancelId: 0,
   }).then(({ response }) => {
@@ -310,25 +341,27 @@ function checkIdle() {
 const LONG_RUN_MS = 2 * 60 * 60 * 1000;
 
 function checkLongRunning() {
-  if (!activeTimer || longRunDialogOpen || !mainWindow) return;
-  if (activeTimer._longRunAlerted) return;
-  if (Date.now() - activeTimer.startTime < LONG_RUN_MS) return;
+  if (!activeTimers.length || longRunDialogOpen || !mainWindow) return;
 
-  activeTimer._longRunAlerted = true;
+  // Find the first timer that has been running long and hasn't been alerted yet
+  const t = activeTimers.find(t => !t._longRunAlerted && Date.now() - t.startTime >= LONG_RUN_MS);
+  if (!t) return;
+
+  t._longRunAlerted = true;
   longRunDialogOpen = true;
-  const hrs = ((Date.now() - activeTimer.startTime) / 3_600_000).toFixed(1);
+  const hrs = ((Date.now() - t.startTime) / 3_600_000).toFixed(1);
 
   dialog.showMessageBox(mainWindow, {
     type: 'warning',
     title: 'Still going?',
     message: `Timer running for ${hrs} hours`,
-    detail: `"${activeTimer.customerName} › ${activeTimer.projectName}" — still working?`,
+    detail: `"${t.customerName} › ${t.projectName}" — still working?`,
     buttons: ['Yes, keep running', 'Stop & save', 'Stop & discard'],
     defaultId: 0, cancelId: 0,
   }).then(({ response }) => {
     longRunDialogOpen = false;
     if (response === 0) return;
-    const payload = response === 1 ? { action: 'stop' } : { action: 'discard' };
+    const payload = response === 1 ? { action: 'stop', key: t.key } : { action: 'discard', key: t.key };
     if (mainWindow) mainWindow.webContents.send('idle-action', payload);
   });
 }
@@ -343,9 +376,11 @@ function setAutoStart(on) {
 // ─── IPC ──────────────────────────────────────────────────────────────────────
 
 // Renderer pushes timer state here whenever it changes
+// state is an array of active timer objects (empty array = no timers)
 ipcMain.on('timer-state-update', (_, state) => {
-  if (activeTimer && !state) _lastTimerStopTime = Date.now(); // record when timer stops
-  activeTimer = state; // null when stopped
+  const wasRunning = activeTimers.length > 0;
+  activeTimers = state || [];
+  if (wasRunning && activeTimers.length === 0) _lastTimerStopTime = Date.now();
   updateTrayTicker();
 });
 
