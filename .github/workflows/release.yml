@@ -3,6 +3,10 @@ name: Build & Release
 on:
   push:
     branches: [master]
+    paths-ignore:
+      # Prevent infinite loop: when this workflow commits latest.yml to
+      # tasks-web/updates/, that push must NOT re-trigger another release build.
+      - 'tasks-web/**'
 
 permissions:
   contents: write
@@ -35,3 +39,26 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CSC_IDENTITY_AUTO_DISCOVERY: false
         run: npm run dist -- --publish always
+
+      - name: Publish latest.yml to GitHub Pages
+        # Rewrites the relative installer URL in dist/latest.yml to an absolute
+        # GitHub Releases URL, then commits it to tasks-web/updates/ so the
+        # deploy-web workflow will pick it up and serve it from Pages.
+        shell: pwsh
+        run: |
+          $content = Get-Content dist/latest.yml -Raw
+          $version = (Select-String -InputObject $content -Pattern 'version:\s+(.+)').Matches[0].Groups[1].Value.Trim()
+          $ghBase  = "https://github.com/WaterhouseA-Programming/timetracker/releases/download/v$version"
+
+          # Make the installer URL absolute so electron-updater can fetch it from GitHub Releases
+          $content = $content -replace '(?m)(^\s+url: )(TimeTracker)', "`$1$ghBase/`$2"
+
+          New-Item -Force -ItemType Directory -Path tasks-web/updates | Out-Null
+          [System.IO.File]::WriteAllText("$PWD/tasks-web/updates/latest.yml", $content, [System.Text.UTF8Encoding]::new($false))
+
+          git config user.email "actions@github.com"
+          git config user.name  "GitHub Actions"
+          git add tasks-web/updates/latest.yml
+          git diff --cached --quiet && exit 0   # nothing changed, skip commit
+          git commit -m "chore: publish latest.yml for v$version"
+          git push
