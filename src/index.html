@@ -873,8 +873,8 @@ async function saveSettings(patch) {
 // TIMER
 // ═══════════════════════════════════════════════════════════════════════════════
 function doStartTimer(customer, project, category, taskId, taskTitle) {
-  const key = `${customer.id}:${project.id}`;
-  if (activeTimers[key]) return; // already running for this project
+  const key = `${customer.id}:${project.id}:${taskId||''}`;
+  if (activeTimers[key]) return; // already running for this project+task combo
   activeTimers[key] = {
     key,
     customerId:   customer.id,
@@ -1146,7 +1146,7 @@ function renderTracker() {
 
   el.innerHTML = catPicker + customers.map(c => {
     const rows = (c.projects||[]).map(p => {
-      const key      = `${c.id}:${p.id}`;
+      const key      = `${c.id}:${p.id}:`;
       const isActive = !!activeTimers[key];
       return `<div class="project-row">
         <span class="project-name">${esc(p.name)}</span>
