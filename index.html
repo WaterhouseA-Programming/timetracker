@@ -146,6 +146,11 @@ main{padding:14px 14px 96px;max-width:900px;margin:0 auto}
 .field{margin-bottom:13px}
 .field label{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--text2);margin-bottom:5px;font-weight:600}
 .field input,.field select,.field textarea{width:100%;padding:9px 12px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-family:'Plus Jakarta Sans',sans-serif;font-size:13px;outline:none;transition:border-color .15s;-webkit-appearance:none;appearance:none}
+/* iOS: bump inputs to 16 px so the system never tries to zoom-on-focus,
+   which would otherwise suppress autocorrect when maximum-scale=1.0 */
+@supports(-webkit-touch-callout:none){
+  .field input,.field textarea,.add-cust-row input,.manage-add-proj input{font-size:16px}
+}
 .field select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' fill='none'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23888' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:30px}
 .field input:focus,.field select:focus,.field textarea:focus{border-color:var(--accent)}
 .modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:18px}
@@ -426,6 +431,7 @@ main{padding:14px 14px 96px;max-width:900px;margin:0 auto}
     <div class="field">
       <label>Notes (optional)</label>
       <textarea id="m-idea-notes" rows="3" placeholder="Describe the idea…"
+        autocorrect="on" autocapitalize="sentences"
         style="width:100%;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-family:'Plus Jakarta Sans',sans-serif;font-size:13px;outline:none;resize:vertical"></textarea>
     </div>
     <div class="field">
