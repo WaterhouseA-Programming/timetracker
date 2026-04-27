@@ -25,11 +25,16 @@ The auto-updater uses `provider: 'github'` from `package.json` — do NOT add or
 
 ### How to ship a new desktop release
 
-1. Bump `"version"` in `package.json` (e.g. `1.0.29` → `1.0.30`)
-2. Commit and push the version bump
-3. Build the installer: `npm run dist`
-4. Publish to GitHub Releases: `gh release create v<version> dist/TimeTracker-Setup-<version>.exe dist/TimeTracker-<version>-portable.exe dist/latest.yml dist/*.blockmap --title "<version>" --latest`
-5. Verify the release assets include `latest.yml` and the `.exe` — the auto-updater needs both.
+**Claude handles this entirely — the user never touches it.**
+
+Steps (run in order, no user action needed):
+1. Find the current version with `gh release list --limit 1` to get the latest tag
+2. Increment the patch number (e.g. `1.0.31` → `1.0.32`) and update `"version"` in `package.json`
+3. Commit the bump: `git commit -m "chore: bump version to X.X.XX"`
+4. Push: `git push origin master`
+5. Build: `npm run dist` (produces files in `dist/`)
+6. Publish: `gh release create vX.X.XX "dist/TimeTracker Setup X.X.XX.exe" "dist/TimeTracker-X.X.XX-portable.exe" dist/latest.yml "dist/TimeTracker Setup X.X.XX.exe.blockmap" --title "X.X.XX" --latest`
+7. Confirm assets on the release include `latest.yml` + `.exe` + `.blockmap`
 
 The PWA deploys automatically on push; only the desktop needs a manual build + release step.
 
