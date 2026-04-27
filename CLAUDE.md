@@ -19,24 +19,18 @@ The service worker cache version in `tasks-web/sw.js` must be bumped (e.g. `tt-t
 
 ## Desktop builds & releases
 
-**Always use GitHub Releases for auto-updates. Never use any other provider.**
+**Releases are fully automatic — never build or publish manually.**
 
-The auto-updater uses `provider: 'github'` from `package.json` — do NOT add or restore a `autoUpdater.setFeedURL()` call in `src/main.js`. The GitHub Releases assets (`.exe`, `latest.yml`, `.blockmap`) are the sole source of truth for updates.
+`.github/workflows/release.yml` fires on every push to `master` and:
+1. Reads `major.minor` from `package.json` and appends the GitHub Actions run number as the patch (e.g. `1.0.47`) — **never manually bump the patch version**
+2. Runs `npm run dist -- --publish always` to build and push assets to GitHub Releases
+3. Rewrites `dist/latest.yml` with absolute GitHub Releases download URLs and commits it to `tasks-web/updates/` so the Pages CDN also has it
 
-### How to ship a new desktop release
+**Never run `npm run dist` or `gh release create` locally** — the CI will race you and one of you will 404.
 
-**Claude handles this entirely — the user never touches it.**
+The auto-updater uses `provider: 'github'` from `package.json`. Do NOT add `autoUpdater.setFeedURL()` back to `src/main.js`.
 
-Steps (run in order, no user action needed):
-1. Find the current version with `gh release list --limit 1` to get the latest tag
-2. Increment the patch number (e.g. `1.0.31` → `1.0.32`) and update `"version"` in `package.json`
-3. Commit the bump: `git commit -m "chore: bump version to X.X.XX"`
-4. Push: `git push origin master`
-5. Build: `npm run dist` (produces files in `dist/`)
-6. Publish: `gh release create vX.X.XX "dist/TimeTracker Setup X.X.XX.exe" "dist/TimeTracker-X.X.XX-portable.exe" dist/latest.yml "dist/TimeTracker Setup X.X.XX.exe.blockmap" --title "X.X.XX" --latest`
-7. Confirm assets on the release include `latest.yml` + `.exe` + `.blockmap`
-
-The PWA deploys automatically on push; only the desktop needs a manual build + release step.
+Just push to master. The CI does the rest.
 
 ## Firestore collections
 
