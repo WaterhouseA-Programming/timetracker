@@ -1,6 +1,6 @@
 {
   "name": "timetracker",
-  "version": "1.0.31",
+  "version": "1.0.32",
   "description": "Time tracking for customers and projects",
   "main": "src/main.js",
   "author": {
