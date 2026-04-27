@@ -1,8 +1,8 @@
-version: 1.0.35
+version: 1.0.37
 files:
-  - url: TimeTracker-Setup-1.0.35.exe
-    sha512: XhDUqNmaVTpg9UMKwmWMRDnzvBDpTYxNeV49UcUhuyfokRayIblgucsqMvmce+7bzOvJSA5+n622TGC+FG/erQ==
-    size: 76426102
-path: TimeTracker-Setup-1.0.35.exe
-sha512: XhDUqNmaVTpg9UMKwmWMRDnzvBDpTYxNeV49UcUhuyfokRayIblgucsqMvmce+7bzOvJSA5+n622TGC+FG/erQ==
-releaseDate: '2026-04-27T22:55:06.156Z'
+  - url: TimeTracker-Setup-1.0.37.exe
+    sha512: oLJfUWbY0ltD5zP1SJ7wWihiPmw/HT5xmYqykefH9BLtGKF9A1xTPVesUMs+XLYyg7Vh79KLN3VCuofa2SiewA==
+    size: 76426262
+path: TimeTracker-Setup-1.0.37.exe
+sha512: oLJfUWbY0ltD5zP1SJ7wWihiPmw/HT5xmYqykefH9BLtGKF9A1xTPVesUMs+XLYyg7Vh79KLN3VCuofa2SiewA==
+releaseDate: '2026-04-27T22:59:03.343Z'
