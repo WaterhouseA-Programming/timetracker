@@ -27,12 +27,8 @@ const fs   = require('fs');
 const os   = require('os');
 
 // ─── Auto-updater ─────────────────────────────────────────────────────────────
-// Serve latest.yml from GitHub Pages (fast CDN, no auth, no rate limits)
-// while downloading the actual installer from GitHub Releases.
-autoUpdater.setFeedURL({
-  provider: 'generic',
-  url: 'https://waterhousea-programming.github.io/timetracker/updates',
-});
+// Uses the publish config in package.json (provider: 'github', owner/repo)
+// so both the version check and the installer download come from GitHub Releases.
 autoUpdater.autoDownload         = true;
 autoUpdater.autoInstallOnAppQuit = true;
 
