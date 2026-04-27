@@ -1378,12 +1378,12 @@ function taskCardHtml(t) {
   const blockers = (t.dependsOn||[]).filter(depId=>{ const d=taskMap[depId]; return d&&d.status!=='done'; });
   const isBlocked = blockers.length > 0;
   return `<div class="task-card${isActive?' task-card-active':''}${isBlocked?' task-card-blocked':''}">
-    <div style="display:flex;align-items:flex-start;gap:6px;margin-bottom:4px">
-      <div class="task-title${done?' done':''}" style="margin-bottom:0;flex:1"
+    <div style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px;align-items:start;margin-bottom:4px">
+      <div class="task-title${done?' done':''}" style="margin-bottom:0"
            data-copy="${esc(t.title)}" title="${esc(t.title)}" onclick="copyTaskTitle(this)">
         ${isActive?`<span class="task-timer-dot"></span>`:''}${esc(t.title)}
       </div>
-      ${showPrio?`<span class="task-priority-badge" style="background:${prio.color}20;color:${prio.color};border:1px solid ${prio.color}40">${prio.label}</span>`:''}
+      ${showPrio?`<span class="task-priority-badge" style="background:${prio.color}20;color:${prio.color};border:1px solid ${prio.color}40">${prio.label}</span>`:'<span></span>'}
     </div>
     ${isBlocked?`<div class="task-blocked-badge">⛔ Blocked by ${blockers.length} task${blockers.length>1?'s':''}</div>`:''}
     <div class="task-meta">${esc(t.customerName||'')} › ${esc(t.projectName||'')}</div>
