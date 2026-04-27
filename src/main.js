@@ -36,19 +36,31 @@ function sendUpdateStatus(msg) {
   if (mainWindow) mainWindow.webContents.send('update-status', msg);
 }
 
+// Strips HTML tags and trims an error message to something readable
+function cleanErr(e) {
+  const raw = (e && e.message) ? e.message : String(e);
+  const code = raw.match(/\b([45]\d{2})\b/)?.[1];
+  const clean = raw.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 120);
+  if (code === '502' || code === '503' || code === '504')
+    return `GitHub is temporarily unavailable (${code}) — try again in a moment.`;
+  if (code === '404') return 'Update file not found on GitHub (404).';
+  if (code === '401' || code === '403') return 'GitHub access denied — check your network/proxy.';
+  return clean || 'Unknown error';
+}
+
 function checkForUpdates() {
   if (!app.isPackaged) {
     sendUpdateStatus('Update checks only run in the installed app, not during development.');
     return;
   }
-  autoUpdater.checkForUpdates().catch(e => sendUpdateStatus('Could not reach update server: ' + e.message));
+  autoUpdater.checkForUpdates().catch(e => sendUpdateStatus('Could not reach update server: ' + cleanErr(e)));
 }
 
 autoUpdater.on('checking-for-update',  () => sendUpdateStatus('Checking for updates…'));
 autoUpdater.on('update-not-available', () => sendUpdateStatus('You\'re on the latest version.'));
 autoUpdater.on('update-available',     () => sendUpdateStatus('Update found — downloading…'));
 autoUpdater.on('download-progress',   p  => sendUpdateStatus(`Downloading… ${Math.round(p.percent)}%`));
-autoUpdater.on('error',               e  => sendUpdateStatus(`Update error: ${e.message}`));
+autoUpdater.on('error',               e  => sendUpdateStatus(`Update error: ${cleanErr(e)}`));
 
 autoUpdater.on('update-downloaded', () => {
   sendUpdateStatus('Update ready to install.');
