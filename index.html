@@ -712,9 +712,9 @@ function cardHtml(t) {
     ? `<span style="font-size:9px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:1px 5px;border-radius:3px;background:${prio.color}20;color:${prio.color};border:1px solid ${prio.color}40;flex-shrink:0">${prio.label}</span>`
     : '';
   return `<div class="card ${t.status}" data-id="${t.id}" data-status="${t.status}">
-    <div style="display:flex;align-items:flex-start;gap:6px;margin-bottom:2px">
-      <div class="card-title${done?' done':''}" style="flex:1;margin-bottom:0">${esc(t.title)}</div>
-      ${prioBadge}
+    <div style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px;align-items:start;margin-bottom:2px">
+      <div class="card-title${done?' done':''}" style="margin-bottom:0">${esc(t.title)}</div>
+      ${prioBadge || '<span></span>'}
     </div>
     <div class="card-meta">${esc(t.customerName||'')} › ${esc(t.projectName||'')}</div>
     <div class="card-actions">
