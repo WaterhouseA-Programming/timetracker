@@ -137,7 +137,7 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
 .temp-row .temp-val{font-size:11px;width:36px;text-align:right;flex-shrink:0}
 
 /* ── Tasks ── */
-.task-cols{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+.task-cols{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:14px}
 .task-col{display:flex;flex-direction:column;gap:7px}
 .task-col-header{padding:7px 12px;border-radius:6px;background:var(--surface2);font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted2);display:flex;align-items:center;gap:6px}
 .col-dot{width:7px;height:7px;border-radius:50%}
@@ -161,6 +161,7 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
 .task-act-btn.advance:hover{background:var(--accent);color:#000}
 .task-add-btn{padding:8px;border:1px dashed var(--border);border-radius:8px;background:transparent;color:var(--muted);font-size:11px;cursor:pointer;text-align:center;transition:all .15s;width:100%;font-family:'Plus Jakarta Sans',sans-serif}
 .task-add-btn:hover{border-color:#444;color:var(--muted2)}
+.task-card-onhold{border-color:#ff980040!important}
 .task-card-blocked{border-color:#ff475740!important}
 .task-priority-badge{font-size:9px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:1px 5px;border-radius:3px;white-space:nowrap;flex-shrink:0}
 .task-blocked-badge{display:inline-flex;align-items:center;gap:3px;font-size:9px;font-weight:600;color:#ff4757;padding:2px 6px;border-radius:3px;background:rgba(255,71,87,.08);border:1px solid rgba(255,71,87,.2);margin-bottom:6px}
@@ -267,7 +268,7 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
   .nav-item::before { content: attr(data-icon); }
   .nav-section { display: none; }
   .charts-grid { grid-template-columns: 1fr; }
-  .task-cols { grid-template-columns: 1fr 1fr; }
+  .task-cols { grid-template-columns: 1fr 1fr 1fr 1fr; }
   .summary-grid { grid-template-columns: repeat(2, 1fr); }
 }
 
@@ -626,6 +627,7 @@ const CATEGORIES = [
 const TASK_STATUSES = [
   { id:'todo',       label:'To Do',      color:'#555'    },
   { id:'inprogress', label:'In Progress',color:'#47c8ff' },
+  { id:'onhold',     label:'On Hold',    color:'#ff9800' },
   { id:'done',       label:'Done',       color:'#47ff8a' },
 ];
 const TASK_PRIORITIES = [
@@ -1350,12 +1352,12 @@ function renderTasks() {
     <div class="task-cols">
       ${TASK_STATUSES.map(s => {
         const col = filtered.filter(t=>t.status===s.id).sort((a,b)=> {
-          if (s.id==='done') {
-            const ta = a.completedAt?.seconds ?? a.createdAt?.seconds ?? 0;
-            const tb = b.completedAt?.seconds ?? b.createdAt?.seconds ?? 0;
-            return tb - ta; // most recently done first
-          }
-          return (PRIO_ORDER[a.priority||'normal']??2)-(PRIO_ORDER[b.priority||'normal']??2);
+          const pa = PRIO_ORDER[a.priority||'normal'] ?? 2;
+          const pb = PRIO_ORDER[b.priority||'normal'] ?? 2;
+          if (pa !== pb) return pa - pb;
+          const ta = a.statusChangedAt?.seconds ?? a.inProgressAt?.seconds ?? a.createdAt?.seconds ?? 0;
+          const tb = b.statusChangedAt?.seconds ?? b.inProgressAt?.seconds ?? b.createdAt?.seconds ?? 0;
+          return tb - ta;
         });
         return `<div class="task-col">
           <div class="task-col-header"><span class="col-dot" style="background:${s.color}"></span>${s.label}<span style="margin-left:auto">${col.length}</span></div>
@@ -1367,15 +1369,19 @@ function renderTasks() {
 }
 
 function taskCardHtml(t) {
-  const done = t.status==='done';
-  const next = t.status==='todo'?'inprogress':'done';
-  const nextLbl = t.status==='todo'?'→ Progress':'✓ Done';
+  const done   = t.status === 'done';
+  const onhold = t.status === 'onhold';
   const isActive = Object.values(activeTimers).some(at => at.taskId === t.id);
   const prio = TASK_PRIORITIES.find(p=>p.id===t.priority);
   const showPrio = prio && t.priority !== 'normal';
   const blockers = (t.dependsOn||[]).filter(depId=>{ const d=taskMap[depId]; return d&&d.status!=='done'; });
   const isBlocked = blockers.length > 0;
-  return `<div class="task-card${isActive?' task-card-active':''}${isBlocked?' task-card-blocked':''}">
+  const cardCls = [
+    isActive  ? 'task-card-active'  : '',
+    isBlocked ? 'task-card-blocked' : '',
+    onhold    ? 'task-card-onhold'  : '',
+  ].filter(Boolean).join(' ');
+  return `<div class="task-card${cardCls?' '+cardCls:''}">
     <div style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px;align-items:start;margin-bottom:4px">
       <div class="task-title${done?' done':''}" style="margin-bottom:0" title="${esc(t.title)}">
         ${isActive?`<span class="task-timer-dot"></span>`:''}${esc(t.title)}
@@ -1385,10 +1391,14 @@ function taskCardHtml(t) {
     ${isBlocked?`<div class="task-blocked-badge">⛔ Blocked by ${blockers.length} task${blockers.length>1?'s':''}</div>`:''}
     <div class="task-meta">${esc(t.customerName||'')} › ${esc(t.projectName||'')}</div>
     <div class="task-actions">
-      ${!done?`<button class="task-act-btn timer-btn" onclick="startTimerFromTask('${t.id}')">▶ Timer</button>`:''}
-      ${!done?`<button class="task-act-btn advance" onclick="advanceTask('${t.id}','${next}')">${nextLbl}</button>`:''}
-      ${done?`<button class="task-act-btn" onclick="advanceTask('${t.id}','todo')">↺ Reopen</button>`:''}
-      <button class="task-act-btn" onclick="openLogTimeModal('${t.id}')">⏱ Log</button>
+      ${t.status==='todo'       ?`<button class="task-act-btn timer-btn" onclick="startTimerFromTask('${t.id}')">▶ Timer</button>`:''}
+      ${t.status==='inprogress' ?`<button class="task-act-btn timer-btn" onclick="startTimerFromTask('${t.id}')">▶ Timer</button>`:''}
+      ${t.status==='todo'       ?`<button class="task-act-btn advance" onclick="advanceTask('${t.id}','inprogress')">→ Progress</button>`:''}
+      ${t.status==='inprogress' ?`<button class="task-act-btn advance" onclick="advanceTask('${t.id}','done')">✓ Done</button>`:''}
+      ${t.status==='onhold'     ?`<button class="task-act-btn advance" onclick="advanceTask('${t.id}','inprogress')">▶ Resume</button>`:''}
+      ${done                    ?`<button class="task-act-btn" onclick="advanceTask('${t.id}','todo')">↺ Reopen</button>`:''}
+      ${(t.status==='todo'||t.status==='inprogress')?`<button class="task-act-btn" onclick="advanceTask('${t.id}','onhold')">⏸ Hold</button>`:''}
+      ${!done?`<button class="task-act-btn" onclick="openLogTimeModal('${t.id}')">⏱ Log</button>`:''}
       <button class="task-act-btn" onclick="openEditTaskModal('${t.id}')">✎</button>
       <button class="task-act-btn copy-btn" data-title="${esc(t.title)}" onclick="copyTaskTitle(this)">⎘</button>
       <button class="task-act-btn" style="margin-left:auto" onclick="removeTask('${t.id}')">✕</button>
@@ -1610,7 +1620,8 @@ window.doAddTask = doAddTask;
 async function advanceTask(id, status) {
   if (!db) return;
   const { doc, updateDoc, serverTimestamp } = _fs;
-  const update = { status };
+  const update = { status, statusChangedAt: serverTimestamp() };
+  if (status === 'inprogress') update.inProgressAt = serverTimestamp();
   if (status === 'done') update.completedAt = serverTimestamp();
   await updateDoc(doc(db,'tasks',id), update);
 }

@@ -78,8 +78,8 @@ main{padding:14px 14px 96px;max-width:900px;margin:0 auto}
 
 /* ── Columns ── */
 .cols{display:flex;flex-direction:column;gap:20px}
-@media(min-width:640px){.cols{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}}
-@media(min-width:640px) and (max-width:860px){.cols{grid-template-columns:1fr 1fr}}
+@media(min-width:640px){.cols{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:14px}}
+@media(min-width:640px) and (max-width:960px){.cols{grid-template-columns:1fr 1fr}}
 .col{display:flex;flex-direction:column;gap:8px}
 .col-hdr{padding:8px 12px;border-radius:var(--radius-sm);background:var(--surface);border:1px solid var(--border);font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--text2);font-weight:700;display:flex;align-items:center;gap:7px;position:sticky;top:58px;z-index:5}
 .col-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
@@ -90,6 +90,7 @@ main{padding:14px 14px 96px;max-width:900px;margin:0 auto}
 .card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;border-radius:2px 0 0 2px}
 .card.todo::before{background:var(--muted)}
 .card.inprogress::before{background:var(--blue)}
+.card.onhold::before{background:#ff9800}
 .card.done::before{background:var(--green)}
 .card:hover{border-color:var(--surface3);transform:translateY(-1px);box-shadow:var(--shadow)}
 .card:active{transform:translateY(0);box-shadow:none}
@@ -357,7 +358,7 @@ main{padding:14px 14px 96px;max-width:900px;margin:0 auto}
     <div class="field">
       <label>Task Title</label>
       <input type="text" id="m-title" placeholder="e.g. Fix login bug"
-             autocorrect="on" autocapitalize="sentences" spellcheck="true"
+             autocorrect="on" autocapitalize="sentences"
              onkeydown="if(event.key==='Enter')saveTask()">
     </div>
     <div class="field">
@@ -396,7 +397,7 @@ main{padding:14px 14px 96px;max-width:900px;margin:0 auto}
     <!-- Add customer -->
     <div class="add-cust-row">
       <input type="text" id="new-cust-input" placeholder="New customer name…"
-             autocorrect="on" autocapitalize="words" spellcheck="true"
+             autocorrect="on" autocapitalize="words"
              onkeydown="if(event.key==='Enter')addCustomer()">
       <button class="btn btn-primary btn-sm" onclick="addCustomer()">+ Customer</button>
     </div>
@@ -426,7 +427,7 @@ main{padding:14px 14px 96px;max-width:900px;margin:0 auto}
     <div class="field">
       <label>Title</label>
       <input type="text" id="m-idea-title" placeholder="e.g. AI-powered invoice parser"
-             autocorrect="on" autocapitalize="sentences" spellcheck="true">
+             autocorrect="on" autocapitalize="sentences">
     </div>
     <div class="field">
       <label>Notes (optional)</label>
@@ -473,7 +474,7 @@ main{padding:14px 14px 96px;max-width:900px;margin:0 auto}
     <div class="field">
       <label>Title</label>
       <input type="text" id="m-prop-title" placeholder="e.g. NHS tender, referral from John…"
-             autocorrect="on" autocapitalize="sentences" spellcheck="true">
+             autocorrect="on" autocapitalize="sentences">
     </div>
     <div class="field">
       <label>Status</label>
@@ -519,6 +520,7 @@ let editingProposalId = null;
 const STATUSES = [
   { id:'todo',       label:'To Do',       color:'#555'    },
   { id:'inprogress', label:'In Progress', color:'#47c8ff' },
+  { id:'onhold',     label:'On Hold',     color:'#ff9800' },
   { id:'done',       label:'Done',        color:'#47ff8a' },
 ];
 
@@ -681,8 +683,14 @@ function renderBoard() {
   const noProjects = !allProjects.length;
   document.getElementById('cols').innerHTML = STATUSES.map(s => {
     let col = filtered.filter(t => t.status === s.id);
-    if (s.id === 'inprogress') col.sort((a,b) => (a.inProgressAt?.seconds||0) - (b.inProgressAt?.seconds||0));
-    if (s.id === 'todo') col.sort((a,b) => (PRIO_ORDER[a.priority||'normal']??2) - (PRIO_ORDER[b.priority||'normal']??2));
+    col.sort((a,b) => {
+      const pa = PRIO_ORDER[a.priority||'normal'] ?? 2;
+      const pb = PRIO_ORDER[b.priority||'normal'] ?? 2;
+      if (pa !== pb) return pa - pb;
+      const ta = a.statusChangedAt?.seconds ?? a.inProgressAt?.seconds ?? a.createdAt?.seconds ?? 0;
+      const tb = b.statusChangedAt?.seconds ?? b.inProgressAt?.seconds ?? b.createdAt?.seconds ?? 0;
+      return tb - ta;
+    });
     const cards = col.length
       ? col.map(t => cardHtml(t)).join('')
       : s.id === 'todo' && noProjects
@@ -704,10 +712,9 @@ function renderBoard() {
 }
 
 function cardHtml(t) {
-  const done    = t.status === 'done';
-  const next    = t.status === 'todo' ? 'inprogress' : 'done';
-  const nextLbl = t.status === 'todo' ? '→ In Progress' : '✓ Done';
-  const prio    = TASK_PRIORITIES.find(p => p.id === t.priority);
+  const done   = t.status === 'done';
+  const onhold = t.status === 'onhold';
+  const prio   = TASK_PRIORITIES.find(p => p.id === t.priority);
   const prioBadge = prio && t.priority !== 'normal'
     ? `<span style="font-size:9px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:1px 5px;border-radius:3px;background:${prio.color}20;color:${prio.color};border:1px solid ${prio.color}40;flex-shrink:0">${prio.label}</span>`
     : '';
@@ -718,8 +725,11 @@ function cardHtml(t) {
     </div>
     <div class="card-meta">${esc(t.customerName||'')} › ${esc(t.projectName||'')}</div>
     <div class="card-actions">
-      ${!done ? `<button class="card-btn advance" onclick="advance('${t.id}','${next}')">${nextLbl}</button>` : ''}
-      ${done  ? `<button class="card-btn" onclick="advance('${t.id}','todo')">↺ Reopen</button>` : ''}
+      ${t.status==='todo'       ? `<button class="card-btn advance" onclick="advance('${t.id}','inprogress')">→ In Progress</button>` : ''}
+      ${t.status==='inprogress' ? `<button class="card-btn advance" onclick="advance('${t.id}','done')">✓ Done</button>` : ''}
+      ${onhold                  ? `<button class="card-btn advance" onclick="advance('${t.id}','inprogress')">▶ Resume</button>` : ''}
+      ${done                    ? `<button class="card-btn" onclick="advance('${t.id}','todo')">↺ Reopen</button>` : ''}
+      ${(t.status==='todo'||t.status==='inprogress') ? `<button class="card-btn" onclick="advance('${t.id}','onhold')">⏸ Hold</button>` : ''}
       <button class="card-btn" onclick='openEditModal(${JSON.stringify(t)})'>✎ Edit</button>
       <button class="card-btn del" onclick="removeTask('${t.id}')">✕</button>
     </div>
@@ -740,7 +750,9 @@ function addButtons(cc, cp) {
 
 // ── Task CRUD ─────────────────────────────────────────────────────────────────
 window.advance = async (id, status) => {
-  const extra = status === 'inprogress' ? { inProgressAt: serverTimestamp() } : {};
+  const extra = { statusChangedAt: serverTimestamp() };
+  if (status === 'inprogress') extra.inProgressAt = serverTimestamp();
+  if (status === 'done')       extra.completedAt  = serverTimestamp();
   await updateDoc(doc(db,'tasks',id), { status, ...extra });
 };
 window.removeTask = async (id) => { await deleteDoc(doc(db,'tasks',id)); };
@@ -845,7 +857,7 @@ function renderManageList() {
         `).join('')}
         <div class="manage-add-proj">
           <input type="text" id="proj-input-${c.id}" placeholder="New project…"
-                 autocorrect="on" autocapitalize="words" spellcheck="true"
+                 autocorrect="on" autocapitalize="words"
                  onkeydown="if(event.key==='Enter')addProject('${c.id}')">
           <button class="btn btn-primary btn-sm" onclick="addProject('${c.id}')">Add</button>
         </div>
@@ -990,6 +1002,87 @@ document.addEventListener('keydown', e => {
     closeDrawer();
   }
 });
+
+// ── Notifications ─────────────────────────────────────────────────────────────
+(function initNotifications() {
+  if (!('Notification' in window)) return;
+
+  // Ask for permission once, silently (no prompt unless user interacts first)
+  // We request lazily on the first Sunday-afternoon check that would fire.
+
+  function maybeNotify() {
+    if (!db) return; // not connected yet
+    const now  = new Date();
+    const day  = now.getDay();   // 0 = Sunday
+    const hour = now.getHours();
+    if (day !== 0 || hour < 14 || hour >= 18) return; // only Sun 2–6 pm
+
+    // Only once per day
+    const lastKey = 'tt_notif_sunday';
+    const lastDay = localStorage.getItem(lastKey);
+    const todayStr = now.toDateString();
+    if (lastDay === todayStr) return;
+
+    const todo       = tasks.filter(t => t.status === 'todo').length;
+    const inProgress = tasks.filter(t => t.status === 'inprogress').length;
+    const onHold     = tasks.filter(t => t.status === 'onhold').length;
+    const total      = todo + inProgress + onHold;
+    if (total === 0) return;
+
+    const body = [
+      inProgress ? `${inProgress} in progress` : '',
+      todo       ? `${todo} to do`              : '',
+      onHold     ? `${onHold} on hold`          : '',
+    ].filter(Boolean).join(' · ');
+
+    function fire() {
+      localStorage.setItem(lastKey, todayStr);
+      new Notification('📋 Plan your week', { body, icon: 'icon.svg', badge: 'icon.svg' });
+    }
+
+    if (Notification.permission === 'granted') {
+      fire();
+    } else if (Notification.permission !== 'denied') {
+      Notification.requestPermission().then(p => { if (p === 'granted') fire(); });
+    }
+  }
+
+  // Check on load and every 30 minutes
+  setTimeout(maybeNotify, 5000); // short delay so tasks have loaded
+  setInterval(maybeNotify, 30 * 60 * 1000);
+
+  // Stale in-progress warning (task in progress for >5 days)
+  function checkStale() {
+    if (!db) return;
+    const cutoff = Date.now() - 5 * 24 * 60 * 60 * 1000;
+    const stale  = tasks.filter(t =>
+      t.status === 'inprogress' &&
+      (t.inProgressAt?.seconds ?? 0) * 1000 < cutoff
+    );
+    if (!stale.length) return;
+
+    const lastKey  = 'tt_notif_stale';
+    const todayStr = new Date().toDateString();
+    if (localStorage.getItem(lastKey) === todayStr) return;
+
+    function fire() {
+      localStorage.setItem(lastKey, todayStr);
+      new Notification('⏳ Tasks going stale', {
+        body: `${stale.length} task${stale.length > 1 ? 's have' : ' has'} been in progress for over 5 days.`,
+        icon: 'icon.svg',
+      });
+    }
+
+    if (Notification.permission === 'granted') {
+      fire();
+    } else if (Notification.permission !== 'denied') {
+      Notification.requestPermission().then(p => { if (p === 'granted') fire(); });
+    }
+  }
+
+  setTimeout(checkStale, 8000);
+  setInterval(checkStale, 60 * 60 * 1000);
+})();
 
 // ── Ideas ─────────────────────────────────────────────────────────────────────
 const IDEA_STATUSES = [
