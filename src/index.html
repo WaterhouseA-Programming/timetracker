@@ -891,6 +891,7 @@ function doStartTimer(customer, project, category, taskId, taskTitle) {
   api.timerStateUpdate(Object.values(activeTimers));
   updateTimerBanner();
   renderTracker();
+  renderTasks();
 }
 window.doStartTimer = doStartTimer;
 
@@ -904,6 +905,7 @@ async function doStopTimer(key, trimSeconds) {
   api.timerStateUpdate(Object.values(activeTimers));
   updateTimerBanner();
   renderTracker();
+  renderTasks();
 
   if (!db) return;
   const { collection, addDoc, serverTimestamp } = _fs;
@@ -936,6 +938,7 @@ async function doDiscardTimer(key) {
   api.timerStateUpdate(Object.values(activeTimers));
   updateTimerBanner();
   renderTracker();
+  renderTasks();
 }
 
 async function switchCategory(key, catId) {
@@ -1619,11 +1622,13 @@ window.doAddTask = doAddTask;
 
 async function advanceTask(id, status) {
   if (!db) return;
+  const prevStatus = taskMap[id]?.status;
   const { doc, updateDoc, serverTimestamp } = _fs;
   const update = { status, statusChangedAt: serverTimestamp() };
   if (status === 'inprogress') update.inProgressAt = serverTimestamp();
   if (status === 'done') update.completedAt = serverTimestamp();
   await updateDoc(doc(db,'tasks',id), update);
+  if (status === 'inprogress' && prevStatus === 'todo') startTimerFromTask(id);
 }
 window.advanceTask = advanceTask;
 
