@@ -50,8 +50,11 @@ jobs:
           $version = (Select-String -InputObject $content -Pattern 'version:\s+(.+)').Matches[0].Groups[1].Value.Trim()
           $ghBase  = "https://github.com/WaterhouseA-Programming/timetracker/releases/download/v$version"
 
-          # Make the installer URL absolute so electron-updater can fetch it from GitHub Releases
-          $content = $content -replace '(?m)(^\s+url: )(TimeTracker)', "`$1$ghBase/`$2"
+          # Make installer URLs absolute so electron-updater downloads from GitHub Releases.
+          # Match 'url: TimeTracker' and 'path: TimeTracker' regardless of leading whitespace
+          # (YAML list items use '  - url:' where '- ' is not whitespace, so ^\s+url: never matched).
+          $content = $content -replace '(url: )(TimeTracker)',  "`$1$ghBase/`$2"
+          $content = $content -replace '(path: )(TimeTracker)', "`$1$ghBase/`$2"
 
           New-Item -Force -ItemType Directory -Path tasks-web/updates | Out-Null
           [System.IO.File]::WriteAllText("$PWD/tasks-web/updates/latest.yml", $content, [System.Text.UTF8Encoding]::new($false))

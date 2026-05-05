@@ -28,7 +28,7 @@ The service worker cache version in `tasks-web/sw.js` must be bumped (e.g. `tt-t
 
 **Never run `npm run dist` or `gh release create` locally** — the CI will race you and one of you will 404.
 
-The auto-updater uses `provider: 'github'` from `package.json`. Do NOT add `autoUpdater.setFeedURL()` back to `src/main.js`.
+The auto-updater uses `setFeedURL` in `src/main.js` pointing to GitHub Pages (`provider: 'generic'`). This is intentional — **do not remove it**. Without it, electron-updater hits the GitHub Releases API directly, which rate-limits and returns transient 404s. The CI patches `latest.yml` with absolute GitHub Releases download URLs before publishing to Pages, so the manifest check comes from Pages (reliable) and the `.exe` download comes from GitHub Releases (where it actually lives).
 
 Just push to master. The CI does the rest.
 

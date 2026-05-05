@@ -27,8 +27,14 @@ const fs   = require('fs');
 const os   = require('os');
 
 // ─── Auto-updater ─────────────────────────────────────────────────────────────
-// Uses the publish config in package.json (provider: 'github', owner/repo)
-// so both the version check and the installer download come from GitHub Releases.
+// Fetch latest.yml from GitHub Pages (CDN, no rate limits, no auth).
+// The installer download URL inside latest.yml points to GitHub Releases,
+// so the .exe comes from there. Do NOT remove setFeedURL — without it,
+// electron-updater hits the GitHub API which rate-limits and 404s.
+autoUpdater.setFeedURL({
+  provider: 'generic',
+  url: 'https://waterhousea-programming.github.io/timetracker/updates',
+});
 autoUpdater.autoDownload         = true;
 autoUpdater.autoInstallOnAppQuit = true;
 
