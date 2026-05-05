@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '{\"systemMessage\": \"TIMETRACKER RULES: (1) Push directly to master only, never create a PR. (2) All features go in both src/index.html and tasks-web/index.html (time tracking is desktop-only exception). (3) Bump sw.js cache version when tasks-web/index.html changes. (4) Never run npm run dist locally, CI handles releases on push to master.\"}'",
+            "shell": "bash"
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,5 +1,11 @@
 # Timetracker — Project Notes
 
+## CRITICAL RULES — READ FIRST
+
+- **Always push directly to `master`** — `git push origin HEAD:master`. Never create a PR.
+- **Feature parity** — every feature goes in both `src/index.html` and `tasks-web/index.html` (time tracking is the only desktop-only exception).
+- **Never build locally** — never run `npm run dist` or `gh release create`. CI handles all releases automatically on push to master.
+
 ## Architecture
 
 - **Desktop app**: `src/index.html` (Electron)
