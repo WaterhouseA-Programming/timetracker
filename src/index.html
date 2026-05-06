@@ -534,6 +534,13 @@ button, input, select, textarea, a, [onclick], .nav-item, .task-act-btn, .task-a
           <button class="btn btn-ghost" onclick="checkUpdates()">Check now</button>
         </div>
       </div>
+
+      <div class="settings-card" id="auth-settings-card" style="display:none">
+        <div class="settings-row">
+          <div><div class="settings-label">Google Account</div><div class="settings-sub" id="auth-user-email">—</div></div>
+          <button class="btn btn-ghost" onclick="signOutUser()">Sign out</button>
+        </div>
+      </div>
     </div>
 
     <!-- Ideas page -->
@@ -647,6 +654,9 @@ function getCat(id) { return CATEGORIES.find(c=>c.id===id) || { id:'General',lab
 let db = null;
 let _fs = null;  // Firestore helpers
 
+let _auth      = null;
+let _authReady = false;
+
 // Local mirrors (kept in sync by Firestore listeners)
 let customers = [];   // [{ id, name, projects:[{id,name,budgetHours}] }]
 let entries   = [];   // [{ id, customerId, projectId, ..., duration }]
@@ -685,36 +695,50 @@ async function connectFirebase(configOverride) {
 
   try {
     const { initializeApp, getApps } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js');
-    const fb = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    const fb     = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    const fbAuth = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js');
 
     const apps = getApps();
-    const app = apps.length ? apps[0] : initializeApp(config);
-    db   = fb.getFirestore(app);
-    _fs  = fb;
+    const app  = apps.length ? apps[0] : initializeApp(config);
+    db    = fb.getFirestore(app);
+    _fs   = fb;
+    _auth = fbAuth.getAuth(app);
 
     localStorage.setItem('fb_config', JSON.stringify(config));
     api.saveFbConfig?.(config); // also persist to AppData so it survives reinstalls
 
-    // Probe Firestore — if the database hasn't been created yet, getDocs returns
-    // a specific error we can catch and show a helpful message for.
-    try {
-      await fb.getDocs(fb.query(fb.collection(db,'customers'), fb.limit(1)));
-    } catch(probe) {
-      const m = (probe.message || '').toLowerCase();
-      const isNoDb = probe.code === 'not-found' ||
-        m.includes('does not exist') || m.includes('database') || m.includes('could not route');
-      if (isNoDb) {
-        const hint = 'Firestore database not found — go to console.firebase.google.com → your project → Firestore Database and click "Create database".';
-        if (errEl) { errEl.textContent = hint; errEl.style.display = 'inline'; }
-        setFbStatus(false, 'Database not found');
-        return false;
-      }
-      // Any other probe error (e.g. network) — let subscribeAll surface it naturally
+    if (!_authReady) {
+      _authReady = true;
+      fbAuth.onAuthStateChanged(_auth, async user => {
+        const overlay = document.getElementById('auth-overlay');
+        if (user) {
+          if (overlay) overlay.style.display = 'none';
+          const emailEl = document.getElementById('auth-user-email');
+          const authCard = document.getElementById('auth-settings-card');
+          if (emailEl) emailEl.textContent = user.email || user.displayName || 'Signed in';
+          if (authCard) authCard.style.display = 'block';
+          try {
+            await fb.getDocs(fb.query(fb.collection(db,'customers'), fb.limit(1)));
+          } catch(probe) {
+            const m = (probe.message || '').toLowerCase();
+            const isNoDb = probe.code === 'not-found' ||
+              m.includes('does not exist') || m.includes('database') || m.includes('could not route');
+            if (isNoDb) {
+              const hint = 'Firestore database not found — go to console.firebase.google.com → your project → Firestore Database and click "Create database".';
+              setFbStatus(false, 'Database not found');
+              return;
+            }
+          }
+          setFbStatus(true);
+          subscribeAll();
+          checkLegacyMigration();
+        } else {
+          setFbStatus(false, 'Sign in required');
+          if (overlay) overlay.style.display = 'flex';
+        }
+      });
     }
 
-    setFbStatus(true);
-    subscribeAll();
-    checkLegacyMigration();
     return true;
   } catch(e) {
     if (errEl) { errEl.textContent = e.message; errEl.style.display = 'inline'; }
@@ -723,6 +747,24 @@ async function connectFirebase(configOverride) {
   }
 }
 window.connectFirebase = connectFirebase;
+
+window.signInWithGoogle = async function() {
+  const errEl = document.getElementById('auth-error');
+  if (errEl) errEl.style.display = 'none';
+  try {
+    const { GoogleAuthProvider, signInWithPopup } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js');
+    await signInWithPopup(_auth, new GoogleAuthProvider());
+  } catch(e) {
+    if (errEl) { errEl.textContent = e.message; errEl.style.display = 'block'; }
+  }
+};
+
+window.signOutUser = async function() {
+  if (!_auth || !confirm('Sign out?')) return;
+  const { signOut } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js');
+  await signOut(_auth);
+  location.reload();
+};
 
 function setFbStatus(on, msg) {
   const text = on ? 'Synced' : (msg || 'Not connected');
@@ -2545,5 +2587,12 @@ async function boot() {
 boot();
 
 </script>
+
+<div id="auth-overlay" style="display:none;position:fixed;inset:0;background:rgba(10,10,10,.94);z-index:9999;flex-direction:column;align-items:center;justify-content:center;gap:16px;text-align:center;padding:24px">
+  <div style="font-size:15px;font-weight:700;color:var(--text)">Sign in to continue</div>
+  <div style="font-size:12px;color:var(--muted2);max-width:280px;line-height:1.6">Your Firebase project now requires authentication. Sign in with the Google account linked to your Firebase project.</div>
+  <button class="btn btn-primary" onclick="signInWithGoogle()" style="min-width:180px">Sign in with Google</button>
+  <div id="auth-error" style="font-size:11px;color:var(--red);display:none;max-width:280px"></div>
+</div>
 </body>
 </html>

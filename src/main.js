@@ -18,7 +18,7 @@
 
 const {
   app, BrowserWindow, Tray, Menu, nativeImage,
-  ipcMain, dialog, powerMonitor, Notification,
+  ipcMain, dialog, powerMonitor, Notification, shell,
 } = require('electron');
 const { autoUpdater } = require('electron-updater');
 const { exec }        = require('child_process');
@@ -159,6 +159,11 @@ function createWindow() {
   });
   mainWindow.on('close', e => { if (isQuitting) return; e.preventDefault(); mainWindow.hide(); });
   mainWindow.on('closed', () => { mainWindow = null; });
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    if (url.includes('.firebaseapp.com') || url.includes('accounts.google.com')) return { action: 'allow' };
+    shell.openExternal(url);
+    return { action: 'deny' };
+  });
 }
 
 // ─── Tray ─────────────────────────────────────────────────────────────────────
