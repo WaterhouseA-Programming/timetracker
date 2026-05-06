@@ -246,6 +246,12 @@ main{padding:14px 14px 96px;max-width:900px;margin:0 auto}
     <button class="drawer-action-btn" onclick="drawerClear()">
       <span class="btn-icon">🗑️</span> Clear saved config
     </button>
+
+    <div class="section-title">Account</div>
+    <div style="font-size:11px;color:var(--text2);padding:4px 0 8px" id="auth-user-email">—</div>
+    <button class="drawer-action-btn" onclick="signOutUser()">
+      <span class="btn-icon">🔓</span> Sign out
+    </button>
   </div>
   <div class="drawer-footer">
     Nimble Panda — Task Board v1.1<br>
@@ -349,6 +355,13 @@ main{padding:14px 14px 96px;max-width:900px;margin:0 auto}
 
 <!-- FAB -->
 <button class="fab" id="fab" onclick="openAddModal()" style="display:none" title="Add task">+</button>
+
+<div id="auth-overlay" style="display:none;position:fixed;inset:0;background:rgba(13,13,13,.95);z-index:9999;flex-direction:column;align-items:center;justify-content:center;gap:16px;text-align:center;padding:24px">
+  <div style="font-size:15px;font-weight:700;color:var(--text)">Sign in to continue</div>
+  <div style="font-size:13px;color:var(--text2);max-width:280px;line-height:1.6">Your Firebase project now requires authentication. Sign in with the Google account linked to your Firebase project.</div>
+  <button class="btn btn-primary" onclick="signInGoogle()" style="min-width:180px">Sign in with Google</button>
+  <div id="auth-error" style="font-size:11px;color:var(--red);display:none;max-width:280px"></div>
+</div>
 
 <!-- Add / Edit task modal -->
 <div class="overlay" id="modal" style="display:none" onclick="closeModal(event)">
@@ -505,9 +518,13 @@ import {
   getFirestore, collection, onSnapshot, addDoc, updateDoc,
   deleteDoc, doc, serverTimestamp, query, orderBy
 } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+import {
+  getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut
+} from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
 
 // ── State ──────────────────────────────────────────────────────────────────────
 let db          = null;
+let auth        = null;
 let customers   = [];
 let allProjects = [];
 let tasks       = [];
@@ -587,15 +604,48 @@ async function initBoard(cfg) {
     const existing = getApps();
     const app = existing.length ? existing[0] : initializeApp(cfg);
     db = getFirestore(app);
-    setStatus(true);
-    document.getElementById('setup-panel').style.display = 'none';
-    document.getElementById('board').style.display       = 'block';
-    document.getElementById('fab').style.display         = 'flex';
-    subscribeAll();
+    if (!auth) {
+      auth = getAuth(app);
+      onAuthStateChanged(auth, user => {
+        const overlay = document.getElementById('auth-overlay');
+        if (user) {
+          if (overlay) overlay.style.display = 'none';
+          const emailEl = document.getElementById('auth-user-email');
+          if (emailEl) emailEl.textContent = user.email || user.displayName || 'Signed in';
+          document.getElementById('setup-panel').style.display = 'none';
+          document.getElementById('board').style.display       = 'block';
+          document.getElementById('fab').style.display         = 'flex';
+          setStatus(true);
+          subscribeAll();
+        } else {
+          if (overlay) overlay.style.display = 'flex';
+          document.getElementById('setup-panel').style.display = 'none';
+          document.getElementById('board').style.display       = 'block';
+          document.getElementById('fab').style.display         = 'none';
+          setStatus(false, 'Sign in required');
+        }
+      });
+    }
   } catch(e) {
     setStatus(false, e.message);
   }
 }
+
+window.signInGoogle = async function() {
+  const errEl = document.getElementById('auth-error');
+  if (errEl) errEl.style.display = 'none';
+  try {
+    await signInWithPopup(auth, new GoogleAuthProvider());
+  } catch(e) {
+    if (errEl) { errEl.textContent = e.message; errEl.style.display = 'block'; }
+  }
+};
+
+window.signOutUser = async function() {
+  if (!auth || !confirm('Sign out?')) return;
+  await signOut(auth);
+  location.reload();
+};
 
 // ── Subscriptions ─────────────────────────────────────────────────────────────
 function showSyncError(msg) {
