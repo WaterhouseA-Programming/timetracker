@@ -356,11 +356,16 @@ main{padding:14px 14px 96px;max-width:900px;margin:0 auto}
 <!-- FAB -->
 <button class="fab" id="fab" onclick="openAddModal()" style="display:none" title="Add task">+</button>
 
-<div id="auth-overlay" style="display:none;position:fixed;inset:0;background:rgba(13,13,13,.95);z-index:9999;flex-direction:column;align-items:center;justify-content:center;gap:16px;text-align:center;padding:24px">
-  <div style="font-size:15px;font-weight:700;color:var(--text)">Sign in to continue</div>
-  <div style="font-size:13px;color:var(--text2);max-width:280px;line-height:1.6">Your Firebase project now requires authentication. Sign in with the Google account linked to your Firebase project.</div>
-  <button class="btn btn-primary" onclick="signInGoogle()" style="min-width:180px">Sign in with Google</button>
-  <div id="auth-error" style="font-size:11px;color:var(--red);display:none;max-width:280px"></div>
+<div id="auth-overlay" style="display:none;position:fixed;inset:0;background:rgba(13,13,13,.95);z-index:9999;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:24px">
+  <div style="font-size:15px;font-weight:700;color:var(--text)">Sign in</div>
+  <input id="auth-email" type="email" placeholder="Email" autocomplete="username"
+    style="width:240px;padding:9px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:inherit;font-size:13px;outline:none"
+    onkeydown="if(event.key==='Enter')document.getElementById('auth-password').focus()">
+  <input id="auth-password" type="password" placeholder="Password" autocomplete="current-password"
+    style="width:240px;padding:9px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:inherit;font-size:13px;outline:none"
+    onkeydown="if(event.key==='Enter')signInEmail()">
+  <button id="auth-sign-in-btn" class="btn btn-primary" onclick="signInEmail()" style="width:240px">Sign in</button>
+  <div id="auth-error" style="font-size:11px;color:var(--red);display:none;max-width:240px;text-align:center"></div>
 </div>
 
 <!-- Add / Edit task modal -->
@@ -519,7 +524,7 @@ import {
   deleteDoc, doc, serverTimestamp, query, orderBy
 } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 import {
-  getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut
+  getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut
 } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
 
 // ── State ──────────────────────────────────────────────────────────────────────
@@ -631,13 +636,20 @@ async function initBoard(cfg) {
   }
 }
 
-window.signInGoogle = async function() {
+window.signInEmail = async function() {
   const errEl = document.getElementById('auth-error');
+  const btn   = document.getElementById('auth-sign-in-btn');
   if (errEl) errEl.style.display = 'none';
+  const email    = document.getElementById('auth-email')?.value?.trim();
+  const password = document.getElementById('auth-password')?.value;
+  if (!email || !password) { if (errEl) { errEl.textContent = 'Enter your email and password.'; errEl.style.display = 'block'; } return; }
+  if (btn) btn.disabled = true;
   try {
-    await signInWithPopup(auth, new GoogleAuthProvider());
+    await signInWithEmailAndPassword(auth, email, password);
   } catch(e) {
-    if (errEl) { errEl.textContent = e.message; errEl.style.display = 'block'; }
+    const msg = e.code === 'auth/invalid-credential' ? 'Incorrect email or password.' : e.message;
+    if (errEl) { errEl.textContent = msg; errEl.style.display = 'block'; }
+    if (btn) btn.disabled = false;
   }
 };
 
