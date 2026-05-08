@@ -40,31 +40,44 @@ jobs:
           CSC_IDENTITY_AUTO_DISCOVERY: false
         run: npm run dist -- --publish always
 
-      - name: Publish latest.yml to GitHub Pages
+      - name: Rewrite latest.yml with absolute GitHub Releases URLs
         # Rewrites the relative installer URL in dist/latest.yml to an absolute
-        # GitHub Releases URL, then commits it to tasks-web/updates/ so the
-        # deploy-web workflow will pick it up and serve it from Pages.
+        # GitHub Releases URL and writes the result into tasks-web/updates/ so
+        # the next step can deploy it to Pages.
+        id: rewrite
         shell: pwsh
         run: |
           $content = Get-Content dist/latest.yml -Raw
           $version = (Select-String -InputObject $content -Pattern 'version:\s+(.+)').Matches[0].Groups[1].Value.Trim()
           $ghBase  = "https://github.com/WaterhouseA-Programming/timetracker/releases/download/v$version"
 
-          # Make installer URLs absolute so electron-updater downloads from GitHub Releases.
-          # Match 'url: TimeTracker' and 'path: TimeTracker' regardless of leading whitespace
-          # (YAML list items use '  - url:' where '- ' is not whitespace, so ^\s+url: never matched).
           $content = $content -replace '(url: )(TimeTracker)',  "`$1$ghBase/`$2"
           $content = $content -replace '(path: )(TimeTracker)', "`$1$ghBase/`$2"
 
           New-Item -Force -ItemType Directory -Path tasks-web/updates | Out-Null
           [System.IO.File]::WriteAllText("$PWD/tasks-web/updates/latest.yml", $content, [System.Text.UTF8Encoding]::new($false))
+          echo "version=$version" >> $env:GITHUB_OUTPUT
 
+      - name: Deploy tasks-web to GitHub Pages
+        # Deploy directly here so Pages is always current after a build.
+        # Pushes made by GITHUB_TOKEN don't trigger other workflows, so relying
+        # on deploy-web.yml to pick up the latest.yml commit would leave Pages stale.
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./tasks-web
+
+      - name: Commit latest.yml to master
+        # Best-effort — Pages is already updated above, this just keeps the
+        # repo copy in sync so deploy-web.yml has the right file when it runs.
+        continue-on-error: true
+        shell: pwsh
+        run: |
           git config user.email "actions@github.com"
           git config user.name  "GitHub Actions"
           git add tasks-web/updates/latest.yml
-          git diff --cached --quiet && exit 0   # nothing changed, skip commit
-          git commit -m "chore: publish latest.yml for v$version"
-          # Pull first — another push may have landed while the build was running.
+          git diff --cached --quiet && exit 0
+          git commit -m "chore: publish latest.yml for v${{ steps.rewrite.outputs.version }}"
           git fetch origin master
           git rebase origin/master
           git push
