@@ -1,4 +1,4 @@
-const CACHE = 'tt-tasks-v17';
+const CACHE = 'tt-tasks-v18';
 // Use self.location so paths work whether served from / or a subpath (e.g. GitHub Pages)
 const BASE  = self.location.pathname.replace(/sw\.js$/, '');
 const SHELL = [
