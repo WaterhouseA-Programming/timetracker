@@ -1690,6 +1690,10 @@ async function advanceTask(id, status) {
   if (status === 'done') update.completedAt = serverTimestamp();
   await updateDoc(doc(db,'tasks',id), update);
   if (status === 'inprogress' && prevStatus === 'todo') startTimerFromTask(id, true); // status already updated
+  if (status === 'done') {
+    const running = Object.values(activeTimers).find(t => t.taskId === id);
+    if (running) doStopTimer(running.key);
+  }
 }
 window.advanceTask = advanceTask;
 
