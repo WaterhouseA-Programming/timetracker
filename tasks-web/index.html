@@ -827,9 +827,11 @@ window.openAddModal = function(presetCustId, presetProjId) {
   document.getElementById('modal-save-btn').textContent = 'Add Task';
   const cs = document.getElementById('m-cust');
   cs.innerHTML = customers.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('');
-  if (presetCustId) cs.value = presetCustId;
+  const defaultCust = presetCustId || localStorage.getItem('tt_last_cust');
+  if (defaultCust) cs.value = defaultCust;
   populateModalProjects();
-  if (presetProjId) document.getElementById('m-proj').value = presetProjId;
+  const defaultProj = presetProjId || localStorage.getItem('tt_last_proj');
+  if (defaultProj) document.getElementById('m-proj').value = defaultProj;
   document.getElementById('m-title').value = '';
   document.getElementById('modal').style.display = 'flex';
   setTimeout(() => document.getElementById('m-title').focus(), 80);
@@ -870,6 +872,8 @@ window.saveTask = async function() {
   const cust = customers.find(c => c.id === cid);
   const proj = allProjects.find(p => p.id === pid);
   if (!cust || !proj) return;
+  localStorage.setItem('tt_last_cust', cid);
+  localStorage.setItem('tt_last_proj', pid);
   document.getElementById('modal').style.display = 'none';
 
   const priority = document.getElementById('m-prio').value || 'normal';

@@ -1714,6 +1714,7 @@ function startTimerFromTask(id, skipStatusMove = false) {
     updateDoc(doc(db,'tasks',id), { status:'inprogress', statusChangedAt: serverTimestamp(), inProgressAt: serverTimestamp() });
   }
   doStartTimer(c, p, 'Coding', t.id, t.title);
+  navigator.clipboard.writeText(t.title).catch(() => {});
 }
 window.startTimerFromTask = startTimerFromTask;
 
