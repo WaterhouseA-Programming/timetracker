@@ -342,7 +342,10 @@ function checkIdle() {
   if (idleSecs < IDLE_THRESHOLD) return;
 
   idleDialogOpen = true;
-  const mins = Math.floor(idleSecs / 60);
+  // Record when the user actually went idle so we can calculate the true
+  // idle duration when they eventually respond (which may be much later).
+  const idleStartedAt = Date.now() - idleSecs * 1000;
+  const mins = Math.round(idleSecs / 60);
   const timerDesc = activeTimers.length === 1
     ? `"${activeTimers[0].customerName} › ${activeTimers[0].projectName}"`
     : `${activeTimers.length} running timers`;
@@ -350,14 +353,16 @@ function checkIdle() {
   dialog.showMessageBox(mainWindow, {
     type: 'question',
     title: "You've been idle",
-    message: `Away for ${mins} minutes`,
+    message: `Away for ${mins}+ minutes`,
     detail: `Still tracking ${timerDesc}?`,
-    buttons: ['Keep all time', `Trim idle (−${mins}m)`, 'Stop & discard'],
+    buttons: ['Keep all time', 'Trim idle time', 'Stop & discard'],
     defaultId: 1, cancelId: 0,
   }).then(({ response }) => {
     idleDialogOpen = false;
     if (response === 0) return;
-    const payload = response === 1 ? { action: 'trim', trimSeconds: idleSecs } : { action: 'discard' };
+    // Use actual elapsed idle time, not the snapshot taken when the dialog appeared.
+    const actualIdleSecs = Math.floor((Date.now() - idleStartedAt) / 1000);
+    const payload = response === 1 ? { action: 'trim', trimSeconds: actualIdleSecs } : { action: 'discard' };
     if (mainWindow) mainWindow.webContents.send('idle-action', payload);
   });
 }

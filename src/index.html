@@ -1058,7 +1058,20 @@ api.onTrayStartTimer(({ customerId, customerName, projectId, projectName, catego
   doStartTimer(c, p, category);
 });
 api.onIdleAction(({ action, trimSeconds, key }) => {
-  if (action === 'trim')         { if (key) doStopTimer(key, trimSeconds); else doStopAllTimers(trimSeconds); }
+  if (action === 'trim') {
+    // Keep timers running but move their startTime forward to skip the idle period.
+    const keys = key ? [key] : Object.keys(activeTimers);
+    keys.forEach(k => {
+      if (activeTimers[k]) {
+        activeTimers[k].startTime = Math.min(
+          activeTimers[k].startTime + trimSeconds * 1000,
+          Date.now()
+        );
+      }
+    });
+    api.timerStateUpdate(Object.values(activeTimers));
+    updateTimerBanner();
+  }
   else if (action === 'stop')    { if (key) doStopTimer(key); else doStopAllTimers(); }
   else if (action === 'discard') { if (key) doDiscardTimer(key); else doDiscardTimer(); }
 });
