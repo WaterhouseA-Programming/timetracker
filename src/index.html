@@ -335,8 +335,7 @@ button, input, select, textarea, a, [onclick], .nav-item, .task-act-btn, .task-a
 
 <div id="app">
   <nav id="sidebar">
-    <div class="nav-item active" data-page="tracker"  data-icon="▶" onclick="showPage('tracker',this)"><span class="nav-label">Timer</span></div>
-    <div class="nav-item" data-page="tasks"            data-icon="✓" onclick="showPage('tasks',this)"><span class="nav-label">Tasks</span></div>
+    <div class="nav-item active" data-page="tasks"     data-icon="✓" onclick="showPage('tasks',this)"><span class="nav-label">Tasks</span></div>
     <div class="nav-item" data-page="log"              data-icon="≡" onclick="showPage('log',this)"><span class="nav-label">Time Log</span></div>
     <div class="nav-item" data-page="charts"           data-icon="◑" onclick="showPage('charts',this)"><span class="nav-label">Insights</span></div>
     <div class="nav-item" data-page="invoices"         data-icon="£" onclick="showPage('invoices',this)"><span class="nav-label">Invoices</span></div>
@@ -351,13 +350,13 @@ button, input, select, textarea, a, [onclick], .nav-item, .task-act-btn, .task-a
     <div id="timer-banner"></div>
 
     <!-- Timer page -->
-    <div class="page active" id="page-tracker">
+    <div class="page" id="page-tracker">
       <div class="page-header"><div class="page-title">Start Timer</div></div>
       <div id="tracker-customers"></div>
     </div>
 
     <!-- Tasks page -->
-    <div class="page" id="page-tasks">
+    <div class="page active" id="page-tasks">
       <div class="page-header">
         <div class="page-title">Tasks</div>
         <div style="display:flex;align-items:center;gap:10px">
@@ -1041,10 +1040,10 @@ function updateTrayCache() {
   })));
 }
 
-// Listen for Claude activity prompt — navigate to tracker so user can start a timer
+// Listen for Claude activity prompt — navigate to tasks so user can start a timer from a task
 api.onPromptTimeCapture?.(() => {
-  const nav = document.querySelector('[data-page="tracker"]');
-  if (nav) showPage('tracker', nav);
+  const nav = document.querySelector('[data-page="tasks"]');
+  if (nav) showPage('tasks', nav);
 });
 
 // Listen for tray commands
