@@ -64,4 +64,7 @@ jobs:
           git add tasks-web/updates/latest.yml
           git diff --cached --quiet && exit 0   # nothing changed, skip commit
           git commit -m "chore: publish latest.yml for v$version"
+          # Pull first — another push may have landed while the build was running.
+          git fetch origin master
+          git rebase origin/master
           git push
