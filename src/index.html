@@ -1676,7 +1676,7 @@ async function advanceTask(id, status) {
   if (status === 'inprogress') update.inProgressAt = serverTimestamp();
   if (status === 'done') update.completedAt = serverTimestamp();
   await updateDoc(doc(db,'tasks',id), update);
-  if (status === 'inprogress' && prevStatus === 'todo') startTimerFromTask(id);
+  if (status === 'inprogress' && prevStatus === 'todo') startTimerFromTask(id, true); // status already updated
 }
 window.advanceTask = advanceTask;
 
@@ -1687,11 +1687,15 @@ async function removeTask(id) {
 }
 window.removeTask = removeTask;
 
-function startTimerFromTask(id) {
+function startTimerFromTask(id, skipStatusMove = false) {
   const t = taskMap[id]; if (!t) return;
   const c = customers.find(x=>x.id===t.customerId);
   const p = c?.projects?.find(x=>x.id===t.projectId);
   if (!c||!p) { alert('Customer/project not found. Check your Projects tab.'); return; }
+  if (!skipStatusMove && t.status === 'todo' && db) {
+    const { doc, updateDoc, serverTimestamp } = _fs;
+    updateDoc(doc(db,'tasks',id), { status:'inprogress', statusChangedAt: serverTimestamp(), inProgressAt: serverTimestamp() });
+  }
   doStartTimer(c, p, 'Coding', t.id, t.title);
 }
 window.startTimerFromTask = startTimerFromTask;
