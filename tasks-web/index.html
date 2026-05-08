@@ -156,6 +156,12 @@ main{padding:14px 14px 96px;max-width:900px;margin:0 auto}
 .field select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' fill='none'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23888' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:30px}
 .field input:focus,.field select:focus,.field textarea:focus{border-color:var(--accent)}
 .modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:18px}
+.proj-chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.proj-chip{padding:5px 11px;border-radius:20px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:12px;font-family:inherit;cursor:pointer;white-space:nowrap;transition:background .15s,border-color .15s}
+.proj-chip.active{background:var(--accent);border-color:var(--accent);color:#000}
+.proj-summary{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;font-size:13px}
+.proj-summary-text{font-weight:500}
+.proj-summary-change{font-size:11px;color:var(--text2)}
 
 /* ── Manage panel ── */
 .manage-section-title{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);font-weight:700;margin:14px 0 8px;padding-top:14px;border-top:1px solid var(--border)}
@@ -380,13 +386,17 @@ main{padding:14px 14px 96px;max-width:900px;margin:0 auto}
              autocorrect="on" autocapitalize="sentences"
              onkeydown="if(event.key==='Enter')saveTask()">
     </div>
-    <div class="field">
-      <label>Customer</label>
-      <select id="m-cust" onchange="populateModalProjects()"></select>
+    <div id="m-chips" class="proj-chips" style="display:none"></div>
+    <div class="field" id="m-proj-collapsed" style="display:none">
+      <label>Customer &amp; Project</label>
+      <div class="proj-summary" onclick="expandProjSelect()">
+        <span class="proj-summary-text" id="m-proj-summary"></span>
+        <span class="proj-summary-change">Change ›</span>
+      </div>
     </div>
-    <div class="field">
-      <label>Project</label>
-      <select id="m-proj"></select>
+    <div class="field" id="m-proj-expanded">
+      <label>Customer &amp; Project</label>
+      <select id="m-custproj" onchange="onCustProjSelect()"></select>
     </div>
     <div class="field">
       <label>Priority</label>
@@ -821,18 +831,91 @@ window.advance = async (id, status) => {
 window.removeTask = async (id) => { await deleteDoc(doc(db,'tasks',id)); };
 
 // ── Add / Edit modal ──────────────────────────────────────────────────────────
+// ── Customer+project picker helpers ──────────────────────────────────────────
+function getRecentCombos() {
+  try { return JSON.parse(localStorage.getItem('tt_recent_combos') || '[]'); } catch { return []; }
+}
+function saveRecentCombo(cid, pid) {
+  const key = `${cid}:${pid}`;
+  const list = getRecentCombos().filter(k => k !== key);
+  list.unshift(key);
+  localStorage.setItem('tt_recent_combos', JSON.stringify(list.slice(0, 3)));
+  localStorage.setItem('tt_last_cust', cid);
+  localStorage.setItem('tt_last_proj', pid);
+}
+function buildCustProjSelect(selectedValue) {
+  document.getElementById('m-custproj').innerHTML = customers.map(c => {
+    const projs = allProjects.filter(p => p.customerId === c.id);
+    if (!projs.length) return '';
+    // Single-project customers: make it a direct option (no extra step)
+    if (projs.length === 1) {
+      const val = `${c.id}:${projs[0].id}`;
+      return `<option value="${val}"${val === selectedValue ? ' selected' : ''}>${esc(c.name)} › ${esc(projs[0].name)}</option>`;
+    }
+    return `<optgroup label="${esc(c.name)}">${
+      projs.map(p => { const val = `${c.id}:${p.id}`; return `<option value="${val}"${val === selectedValue ? ' selected' : ''}>${esc(p.name)}</option>`; }).join('')
+    }</optgroup>`;
+  }).join('');
+}
+function renderChips(selectedValue) {
+  const combos = getRecentCombos();
+  const el = document.getElementById('m-chips');
+  const items = combos.map(key => {
+    const [cid, pid] = key.split(':');
+    const c = customers.find(x => x.id === cid);
+    const p = allProjects.find(x => x.id === pid);
+    if (!c || !p) return '';
+    return `<button class="proj-chip${key === selectedValue ? ' active' : ''}" onclick="selectCombo('${key}')">${esc(c.name)} › ${esc(p.name)}</button>`;
+  }).filter(Boolean);
+  el.innerHTML = items.join('');
+  el.style.display = items.length ? 'flex' : 'none';
+}
+function collapseToSummary(val) {
+  const [cid, pid] = (val || '').split(':');
+  const c = customers.find(x => x.id === cid);
+  const p = allProjects.find(x => x.id === pid);
+  if (!c || !p) { expandProjSelect(); return; }
+  document.getElementById('m-proj-summary').textContent = `${c.name} › ${p.name}`;
+  document.getElementById('m-proj-collapsed').style.display = 'block';
+  document.getElementById('m-proj-expanded').style.display  = 'none';
+}
+window.expandProjSelect = function() {
+  document.getElementById('m-proj-collapsed').style.display = 'none';
+  document.getElementById('m-proj-expanded').style.display  = 'block';
+};
+window.onCustProjSelect = function() {
+  const val = document.getElementById('m-custproj').value;
+  renderChips(val);
+  collapseToSummary(val);
+};
+window.selectCombo = function(key) {
+  document.getElementById('m-custproj').value = key;
+  renderChips(key);
+  collapseToSummary(key);
+};
+function openModalWith(selectedValue) {
+  buildCustProjSelect(selectedValue);
+  renderChips(selectedValue);
+  if (selectedValue && document.getElementById('m-custproj').value === selectedValue) {
+    collapseToSummary(selectedValue);
+  } else {
+    document.getElementById('m-proj-collapsed').style.display = 'none';
+    document.getElementById('m-proj-expanded').style.display  = 'block';
+  }
+}
+
 window.openAddModal = function(presetCustId, presetProjId) {
   editingTaskId = null;
   document.getElementById('modal-title').textContent    = 'Add Task';
   document.getElementById('modal-save-btn').textContent = 'Add Task';
-  const cs = document.getElementById('m-cust');
-  cs.innerHTML = customers.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('');
-  const defaultCust = presetCustId || localStorage.getItem('tt_last_cust');
-  if (defaultCust) cs.value = defaultCust;
-  populateModalProjects();
-  const defaultProj = presetProjId || localStorage.getItem('tt_last_proj');
-  if (defaultProj) document.getElementById('m-proj').value = defaultProj;
   document.getElementById('m-title').value = '';
+  document.getElementById('m-prio').value  = 'normal';
+  const lastCust = localStorage.getItem('tt_last_cust');
+  const lastProj = localStorage.getItem('tt_last_proj');
+  const defaultVal = presetCustId && presetProjId
+    ? `${presetCustId}:${presetProjId}`
+    : (lastCust && lastProj ? `${lastCust}:${lastProj}` : null);
+  openModalWith(defaultVal);
   document.getElementById('modal').style.display = 'flex';
   setTimeout(() => document.getElementById('m-title').focus(), 80);
 };
@@ -841,23 +924,14 @@ window.openEditModal = function(t) {
   editingTaskId = t.id;
   document.getElementById('modal-title').textContent    = 'Edit Task';
   document.getElementById('modal-save-btn').textContent = 'Save Changes';
-  const cs = document.getElementById('m-cust');
-  cs.innerHTML = customers.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('');
-  cs.value = t.customerId;
-  populateModalProjects();
-  document.getElementById('m-proj').value   = t.projectId;
-  document.getElementById('m-title').value  = t.title;
-  document.getElementById('m-prio').value   = t.priority || 'normal';
+  document.getElementById('m-title').value = t.title;
+  document.getElementById('m-prio').value  = t.priority || 'normal';
+  openModalWith(`${t.customerId}:${t.projectId}`);
   document.getElementById('modal').style.display = 'flex';
   setTimeout(() => document.getElementById('m-title').focus(), 80);
 };
 
-window.populateModalProjects = function() {
-  const cid = document.getElementById('m-cust').value;
-  document.getElementById('m-proj').innerHTML =
-    allProjects.filter(p => p.customerId === cid)
-               .map(p => `<option value="${p.id}">${esc(p.name)}</option>`).join('');
-};
+window.populateModalProjects = function() {}; // superseded by grouped select
 
 window.closeModal = function(e) {
   if (!e || e.target === document.getElementById('modal'))
@@ -867,13 +941,12 @@ window.closeModal = function(e) {
 window.saveTask = async function() {
   const title = document.getElementById('m-title').value.trim();
   if (!title) { document.getElementById('m-title').focus(); return; }
-  const cid  = document.getElementById('m-cust').value;
-  const pid  = document.getElementById('m-proj').value;
+  const combo = document.getElementById('m-custproj').value;
+  const [cid, pid] = (combo || '').split(':');
   const cust = customers.find(c => c.id === cid);
   const proj = allProjects.find(p => p.id === pid);
   if (!cust || !proj) return;
-  localStorage.setItem('tt_last_cust', cid);
-  localStorage.setItem('tt_last_proj', pid);
+  saveRecentCombo(cid, pid);
   document.getElementById('modal').style.display = 'none';
 
   const priority = document.getElementById('m-prio').value || 'normal';
