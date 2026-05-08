@@ -2,7 +2,7 @@
 <html lang="en" data-theme="dark">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="theme-color" content="#0d0d0d" id="meta-theme-color">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -147,10 +147,11 @@ main{padding:14px 14px 96px;max-width:900px;margin:0 auto}
 .field{margin-bottom:13px}
 .field label{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--text2);margin-bottom:5px;font-weight:600}
 .field input,.field select,.field textarea{width:100%;padding:9px 12px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-family:'Plus Jakarta Sans',sans-serif;font-size:13px;outline:none;transition:border-color .15s;-webkit-appearance:none;appearance:none}
-/* iOS: bump inputs to 16 px so the system never tries to zoom-on-focus,
-   which would otherwise suppress autocorrect when maximum-scale=1.0 */
+/* iOS: bump all inputs/textareas to 16px so the OS never triggers zoom-on-focus.
+   Zoom-on-focus suppresses the autocorrect/suggestion bar, so keeping font ≥ 16px
+   is what actually makes autocorrect work — not maximum-scale (which we no longer set). */
 @supports(-webkit-touch-callout:none){
-  .field input,.field textarea,.add-cust-row input,.manage-add-proj input{font-size:16px}
+  input,textarea{font-size:16px !important}
 }
 .field select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' fill='none'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23888' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:30px}
 .field input:focus,.field select:focus,.field textarea:focus{border-color:var(--accent)}
@@ -1129,10 +1130,11 @@ document.addEventListener('keydown', e => {
 
     function fire() {
       localStorage.setItem(lastKey, todayStr);
-      new Notification('⏳ Tasks going stale', {
-        body: `${stale.length} task${stale.length > 1 ? 's have' : ' has'} been in progress for over 5 days.`,
-        icon: 'icon.svg',
-      });
+      const oldest = [...stale].sort((a, b) => (a.inProgressAt?.seconds ?? 0) - (b.inProgressAt?.seconds ?? 0));
+      const body = stale.length === 1
+        ? `"${oldest[0].title}" has been in progress for over 5 days.`
+        : `"${oldest[0].title}" and ${stale.length - 1} other task${stale.length > 2 ? 's' : ''} have been in progress for over 5 days.`;
+      new Notification('⏳ Tasks going stale', { body, icon: 'icon.svg' });
     }
 
     if (Notification.permission === 'granted') {
