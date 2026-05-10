@@ -940,6 +940,7 @@ function doStartTimer(customer, project, category, taskId, taskTitle) {
   updateTimerBanner();
   renderTracker();
   renderTasks();
+  renderIdeas();
 }
 window.doStartTimer = doStartTimer;
 
@@ -954,6 +955,7 @@ async function doStopTimer(key, trimSeconds) {
   updateTimerBanner();
   renderTracker();
   renderTasks();
+  renderIdeas();
 
   if (!db) return;
   const { collection, addDoc, serverTimestamp } = _fs;
@@ -987,6 +989,7 @@ async function doDiscardTimer(key) {
   updateTimerBanner();
   renderTracker();
   renderTasks();
+  renderIdeas();
 }
 
 async function switchCategory(key, catId) {
@@ -1153,9 +1156,11 @@ function updateTimerBanner() {
 
   const rows = timers.map(t => {
     const cat  = getCat(t.category);
-    const proj = t.taskTitle
-      ? `${esc(t.customerName)} › ${esc(t.projectName)} — <a href="#" style="color:${cat.color};text-decoration:underline" onclick="showPage('tasks',document.querySelector('[data-page=\\'tasks\\']'));return false;">${esc(t.taskTitle)}</a>`
-      : `${esc(t.customerName)} › ${esc(t.projectName)}`;
+    const proj = t.customerId === 'ideas'
+      ? `💡 <a href="#" style="color:${cat.color};text-decoration:underline" onclick="showPage('ideas',document.querySelector('[data-page=\\'ideas\\']'));return false;">${esc(t.projectName)}</a>`
+      : t.taskTitle
+        ? `${esc(t.customerName)} › ${esc(t.projectName)} — <a href="#" style="color:${cat.color};text-decoration:underline" onclick="showPage('tasks',document.querySelector('[data-page=\\'tasks\\']'));return false;">${esc(t.taskTitle)}</a>`
+        : `${esc(t.customerName)} › ${esc(t.projectName)}`;
     const cats = CATEGORIES.map(c => {
       const sel = (t.category || 'Coding') === c.id;
       return `<button class="cat-pill${sel?' selected':''}" style="color:${c.color};background:${sel?c.bg:'transparent'}"
@@ -1718,6 +1723,14 @@ function startTimerFromTask(id, skipStatusMove = false) {
 }
 window.startTimerFromTask = startTimerFromTask;
 
+function startTimerFromIdea(id) {
+  const idea = ideas.find(i => i.id === id); if (!idea) return;
+  const key = `ideas:${id}:`;
+  if (activeTimers[key]) return;
+  doStartTimer({ id: 'ideas', name: 'Ideas' }, { id: idea.id, name: idea.title }, 'Coding', null, null);
+}
+window.startTimerFromIdea = startTimerFromIdea;
+
 function copyTaskTitle(btn) {
   const text = btn.dataset.title || '';
   navigator.clipboard.writeText(text).catch(() => {});
@@ -1763,6 +1776,10 @@ function renderIdeas() {
       <div style="display:flex;gap:6px;margin-top:10px">
         <button class="task-act-btn" onclick="openEditIdeaModal('${idea.id}')">✎ Edit</button>
         <button class="task-act-btn" onclick="cycleIdeaStatus('${idea.id}','${idea.status}')">→ Next</button>
+        ${activeTimers[`ideas:${idea.id}:`]
+          ? `<button class="task-act-btn" style="color:var(--accent)" onclick="doStopTimer('ideas:${idea.id}:')">■ Stop</button>`
+          : `<button class="task-act-btn" onclick="startTimerFromIdea('${idea.id}')">▶ Start</button>`
+        }
         <button class="task-act-btn" onclick="openLogTimeIdeaModal('${idea.id}')">⏱ Log</button>
         <button class="task-act-btn" style="margin-left:auto" onclick="removeIdea('${idea.id}')">✕</button>
       </div>
