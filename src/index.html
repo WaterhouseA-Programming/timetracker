@@ -138,7 +138,10 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
 
 /* ── Tasks ── */
 .task-cols{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:14px}
-.task-col{display:flex;flex-direction:column;gap:7px}
+.task-col{display:flex;flex-direction:column;gap:7px;border-radius:8px;transition:background .15s,box-shadow .15s}
+.task-col.drag-over{background:rgba(71,200,255,.06);box-shadow:inset 0 0 0 2px rgba(71,200,255,.4)}
+.task-card[draggable="true"]{cursor:grab}
+.task-card-dragging{opacity:.4;cursor:grabbing}
 .task-col-header{padding:7px 12px;border-radius:6px;background:var(--surface2);font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted2);display:flex;align-items:center;gap:6px}
 .col-dot{width:7px;height:7px;border-radius:50%}
 .task-card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 12px;transition:border-color .15s}
@@ -1428,7 +1431,7 @@ function renderTasks() {
           const tb = b.statusChangedAt?.seconds ?? b.inProgressAt?.seconds ?? b.createdAt?.seconds ?? 0;
           return tb - ta;
         });
-        return `<div class="task-col">
+        return `<div class="task-col" data-status="${s.id}" ondragover="taskDragOver(event)" ondragleave="taskDragLeave(event)" ondrop="taskDrop(event,'${s.id}')">
           <div class="task-col-header"><span class="col-dot" style="background:${s.color}"></span>${s.label}<span style="margin-left:auto">${col.length}</span></div>
           ${col.map(t=>taskCardHtml(t)).join('')}
           ${s.id==='todo' ? getAddBtns(fc,fp) : ''}
@@ -1450,7 +1453,7 @@ function taskCardHtml(t) {
     isBlocked ? 'task-card-blocked' : '',
     onhold    ? 'task-card-onhold'  : '',
   ].filter(Boolean).join(' ');
-  return `<div class="task-card${cardCls?' '+cardCls:''}">
+  return `<div class="task-card${cardCls?' '+cardCls:''}" draggable="true" data-id="${t.id}" ondragstart="taskDragStart(event,'${t.id}')" ondragend="taskDragEnd(event)">
     <div style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px;align-items:start;margin-bottom:4px">
       <div class="task-title${done?' done':''}" style="margin-bottom:0" title="${esc(t.title)}">
         ${isActive?`<span class="task-timer-dot"></span>`:''}${esc(t.title)}
@@ -1701,6 +1704,41 @@ async function advanceTask(id, status) {
   }
 }
 window.advanceTask = advanceTask;
+
+let _dragTaskId = null;
+function taskDragStart(e, id) {
+  _dragTaskId = id;
+  e.dataTransfer.effectAllowed = 'move';
+  try { e.dataTransfer.setData('text/plain', id); } catch (_) {}
+  e.currentTarget.classList.add('task-card-dragging');
+}
+function taskDragEnd(e) {
+  e.currentTarget.classList.remove('task-card-dragging');
+  document.querySelectorAll('.task-col.drag-over').forEach(c => c.classList.remove('drag-over'));
+  _dragTaskId = null;
+}
+function taskDragOver(e) {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  e.currentTarget.classList.add('drag-over');
+}
+function taskDragLeave(e) {
+  if (!e.currentTarget.contains(e.relatedTarget)) e.currentTarget.classList.remove('drag-over');
+}
+function taskDrop(e, status) {
+  e.preventDefault();
+  e.currentTarget.classList.remove('drag-over');
+  const id = _dragTaskId || e.dataTransfer.getData('text/plain');
+  _dragTaskId = null;
+  if (!id) return;
+  const t = taskMap[id];
+  if (t && t.status !== status) advanceTask(id, status);
+}
+window.taskDragStart = taskDragStart;
+window.taskDragEnd = taskDragEnd;
+window.taskDragOver = taskDragOver;
+window.taskDragLeave = taskDragLeave;
+window.taskDrop = taskDrop;
 
 async function removeTask(id) {
   if (!db) return;

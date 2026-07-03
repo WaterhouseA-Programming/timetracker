@@ -80,7 +80,10 @@ main{padding:14px 14px 96px;max-width:900px;margin:0 auto}
 .cols{display:flex;flex-direction:column;gap:20px}
 @media(min-width:640px){.cols{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:14px}}
 @media(min-width:640px) and (max-width:960px){.cols{grid-template-columns:1fr 1fr}}
-.col{display:flex;flex-direction:column;gap:8px}
+.col{display:flex;flex-direction:column;gap:8px;border-radius:var(--radius);transition:background .15s,box-shadow .15s}
+.col.drag-over{background:rgba(71,200,255,.06);box-shadow:inset 0 0 0 2px rgba(71,200,255,.4)}
+.card[draggable="true"]{cursor:grab}
+.card-dragging{opacity:.4;cursor:grabbing}
 .col-hdr{padding:8px 12px;border-radius:var(--radius-sm);background:var(--surface);border:1px solid var(--border);font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--text2);font-weight:700;display:flex;align-items:center;gap:7px;position:sticky;top:58px;z-index:5}
 .col-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
 .col-count{margin-left:auto;padding:1px 7px;border-radius:10px;background:var(--surface2);border:1px solid var(--border);font-size:10px;color:var(--text2)}
@@ -770,7 +773,7 @@ function renderBoard() {
         ? `<div class="empty"><div class="empty-icon">👋</div>Add customers &amp; projects<br>via Settings → Customers &amp; Projects</div>`
         : `<div class="empty"><div class="empty-icon">·</div>No tasks</div>`;
     const addBtns = s.id === 'todo' ? addButtons(cc, cp) : '';
-    return `<div class="col" data-status="${s.id}">
+    return `<div class="col" data-status="${s.id}" ondragover="taskDragOver(event)" ondragleave="taskDragLeave(event)" ondrop="taskDrop(event,'${s.id}')">
       <div class="col-hdr">
         <span class="col-dot" style="background:${s.color}"></span>
         ${s.label}
@@ -791,7 +794,7 @@ function cardHtml(t) {
   const prioBadge = prio && t.priority !== 'normal'
     ? `<span style="font-size:9px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:1px 5px;border-radius:3px;background:${prio.color}20;color:${prio.color};border:1px solid ${prio.color}40;flex-shrink:0">${prio.label}</span>`
     : '';
-  return `<div class="card ${t.status}" data-id="${t.id}" data-status="${t.status}">
+  return `<div class="card ${t.status}" data-id="${t.id}" data-status="${t.status}" draggable="true" ondragstart="taskDragStart(event,'${t.id}')" ondragend="taskDragEnd(event)">
     <div style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px;align-items:start;margin-bottom:2px">
       <div class="card-title${done?' done':''}" style="margin-bottom:0">${esc(t.title)}</div>
       ${prioBadge || '<span></span>'}
@@ -829,6 +832,36 @@ window.advance = async (id, status) => {
   await updateDoc(doc(db,'tasks',id), { status, ...extra });
 };
 window.removeTask = async (id) => { await deleteDoc(doc(db,'tasks',id)); };
+
+let _dragTaskId = null;
+window.taskDragStart = function(e, id) {
+  _dragTaskId = id;
+  e.dataTransfer.effectAllowed = 'move';
+  try { e.dataTransfer.setData('text/plain', id); } catch (_) {}
+  e.currentTarget.classList.add('card-dragging');
+};
+window.taskDragEnd = function(e) {
+  e.currentTarget.classList.remove('card-dragging');
+  document.querySelectorAll('.col.drag-over').forEach(c => c.classList.remove('drag-over'));
+  _dragTaskId = null;
+};
+window.taskDragOver = function(e) {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  e.currentTarget.classList.add('drag-over');
+};
+window.taskDragLeave = function(e) {
+  if (!e.currentTarget.contains(e.relatedTarget)) e.currentTarget.classList.remove('drag-over');
+};
+window.taskDrop = function(e, status) {
+  e.preventDefault();
+  e.currentTarget.classList.remove('drag-over');
+  const id = _dragTaskId || e.dataTransfer.getData('text/plain');
+  _dragTaskId = null;
+  if (!id) return;
+  const t = tasks.find(x => x.id === id);
+  if (t && t.status !== status) window.advance(id, status);
+};
 
 // ── Add / Edit modal ──────────────────────────────────────────────────────────
 // ── Customer+project picker helpers ──────────────────────────────────────────
