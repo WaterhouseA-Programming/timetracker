@@ -42,7 +42,7 @@ Just push to master. The CI does the rest.
 
 - `customers` — name
 - `projects` — name, customerId
-- `tasks` — title, status, customerId, customerName, projectId, projectName, createdAt, inProgressAt
+- `tasks` — title, status, customerId, customerName, projectId, projectName, createdAt, inProgressAt, notes
 - `entries` — time log entries (desktop only)
 - `ideas` — title, notes, status, createdAt
 - `proposals` — title, customerId, customerName, value, notes, status, createdAt

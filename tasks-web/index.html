@@ -410,6 +410,12 @@ main{padding:14px 14px 96px;max-width:900px;margin:0 auto}
         <option value="critical">Critical</option>
       </select>
     </div>
+    <div class="field">
+      <label>Note <span style="color:var(--text2);font-weight:400">(why this status, context…)</span></label>
+      <textarea id="m-notes" rows="3" placeholder="e.g. Waiting on client sign-off"
+                autocorrect="on" autocapitalize="sentences"
+                style="width:100%;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:13px;outline:none;resize:vertical;font-family:inherit"></textarea>
+    </div>
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
       <button class="btn btn-primary" id="modal-save-btn" onclick="saveTask()">Add Task</button>
@@ -800,6 +806,7 @@ function cardHtml(t) {
       ${prioBadge || '<span></span>'}
     </div>
     <div class="card-meta">${esc(t.customerName||'')} › ${esc(t.projectName||'')}</div>
+    ${t.notes?`<div class="card-note" style="font-size:12px;color:var(--text2);white-space:pre-wrap;margin:4px 0 2px;padding-left:7px;border-left:2px solid var(--border)">${esc(t.notes)}</div>`:''}
     <div class="card-actions">
       ${t.status==='todo'       ? `<button class="card-btn advance" onclick="advance('${t.id}','inprogress')">→ In Progress</button>` : ''}
       ${t.status==='inprogress' ? `<button class="card-btn advance" onclick="advance('${t.id}','done')">✓ Done</button>` : ''}
@@ -943,6 +950,7 @@ window.openAddModal = function(presetCustId, presetProjId) {
   document.getElementById('modal-save-btn').textContent = 'Add Task';
   document.getElementById('m-title').value = '';
   document.getElementById('m-prio').value  = 'normal';
+  document.getElementById('m-notes').value = '';
   const lastCust = localStorage.getItem('tt_last_cust');
   const lastProj = localStorage.getItem('tt_last_proj');
   const defaultVal = presetCustId && presetProjId
@@ -959,6 +967,7 @@ window.openEditModal = function(t) {
   document.getElementById('modal-save-btn').textContent = 'Save Changes';
   document.getElementById('m-title').value = t.title;
   document.getElementById('m-prio').value  = t.priority || 'normal';
+  document.getElementById('m-notes').value = t.notes || '';
   openModalWith(`${t.customerId}:${t.projectId}`);
   document.getElementById('modal').style.display = 'flex';
   setTimeout(() => document.getElementById('m-title').focus(), 80);
@@ -983,15 +992,16 @@ window.saveTask = async function() {
   document.getElementById('modal').style.display = 'none';
 
   const priority = document.getElementById('m-prio').value || 'normal';
+  const notes = document.getElementById('m-notes').value.trim();
   if (editingTaskId) {
     await updateDoc(doc(db,'tasks',editingTaskId), {
       title, customerId: cid, customerName: cust.name,
-      projectId: pid, projectName: proj.name, priority,
+      projectId: pid, projectName: proj.name, priority, notes,
     });
     editingTaskId = null;
   } else {
     await addDoc(collection(db,'tasks'), {
-      title, status:'todo', priority,
+      title, status:'todo', priority, notes,
       customerId:cid, customerName:cust.name,
       projectId:pid,  projectName:proj.name,
       createdAt: serverTimestamp(),
