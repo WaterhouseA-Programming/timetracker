@@ -1827,6 +1827,15 @@ function copyTaskTitle(btn) {
 }
 window.copyTaskTitle = copyTaskTitle;
 
+function copyText(btn) {
+  const text = btn.dataset.copy || '';
+  navigator.clipboard.writeText(text).catch(() => {});
+  const orig = btn.textContent;
+  btn.textContent = '✓';
+  setTimeout(() => { btn.textContent = orig; }, 1200);
+}
+window.copyText = copyText;
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // UI — IDEAS
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -1868,6 +1877,7 @@ function renderIdeas() {
           : `<button class="task-act-btn" onclick="startTimerFromIdea('${idea.id}')">▶ Start</button>`
         }
         <button class="task-act-btn" onclick="openLogTimeIdeaModal('${idea.id}')">⏱ Log</button>
+        <button class="task-act-btn copy-btn" data-copy="${esc(idea.notes ? idea.title+'\n\n'+idea.notes : idea.title)}" onclick="copyText(this)" title="Copy">⎘</button>
         <button class="task-act-btn" style="margin-left:auto" onclick="removeIdea('${idea.id}')">✕</button>
       </div>
     </div>`;

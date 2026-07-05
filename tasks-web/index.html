@@ -1358,6 +1358,7 @@ function renderIdeas() {
       <div style="display:flex;gap:6px">
         <button onclick="openEditIdeaForm('${idea.id}')" style="flex:1;padding:6px;border-radius:7px;border:1px solid var(--border);background:var(--surface3);color:var(--text);font-size:11px;font-weight:600;cursor:pointer">✎ Edit</button>
         <button onclick="cycleIdeaStatus('${idea.id}','${idea.status}')" style="flex:1;padding:6px;border-radius:7px;border:1px solid var(--border);background:var(--surface3);color:var(--text);font-size:11px;font-weight:600;cursor:pointer">→ Next</button>
+        <button onclick="copyText(this)" data-copy="${esc(idea.notes ? idea.title+'\n\n'+idea.notes : idea.title)}" title="Copy" style="padding:6px 10px;border-radius:7px;border:1px solid var(--border);background:var(--surface3);color:var(--text);font-size:11px;cursor:pointer">⎘</button>
         <button onclick="removeIdea('${idea.id}')" style="padding:6px 10px;border-radius:7px;border:1px solid var(--border);background:var(--surface3);color:var(--text2);font-size:11px;cursor:pointer">✕</button>
       </div>
     </div>`;
@@ -1527,6 +1528,14 @@ if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').ca
 function esc(s) {
   return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
+function copyText(btn) {
+  const text = btn.dataset.copy || '';
+  navigator.clipboard.writeText(text).catch(() => {});
+  const orig = btn.textContent;
+  btn.textContent = '✓';
+  setTimeout(() => { btn.textContent = orig; }, 1200);
+}
+window.copyText = copyText;
 
 // ── Boot ──────────────────────────────────────────────────────────────────────
 const saved = loadCfg();
