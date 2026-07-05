@@ -109,6 +109,8 @@ main{padding:14px 14px 96px;max-width:900px;margin:0 auto}
 .card-btn.advance:hover{background:var(--accent);color:#000;border-color:var(--accent)}
 .card-btn.del{margin-left:auto}
 .card-btn.del:hover{color:var(--red);border-color:rgba(255,71,87,.35)}
+.card-status-select{padding:4px 6px;border-radius:4px;border:1px solid var(--border);background:var(--surface2);font-family:'Plus Jakarta Sans',sans-serif;font-size:10px;font-weight:600;cursor:pointer;outline:none;-webkit-appearance:none;appearance:none;text-align:center}
+.card-status-select:active{transform:scale(.94)}
 
 /* ── Drag ghost ── */
 .drag-ghost{position:fixed;pointer-events:none;z-index:1000;transform:rotate(2deg) scale(1.04);box-shadow:0 10px 35px rgba(0,0,0,.6);border-radius:var(--radius);opacity:.92;transition:none}
@@ -419,6 +421,24 @@ main{padding:14px 14px 96px;max-width:900px;margin:0 auto}
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
       <button class="btn btn-primary" id="modal-save-btn" onclick="saveTask()">Add Task</button>
+    </div>
+  </div>
+</div>
+
+<!-- Quick note modal -->
+<div class="overlay" id="note-overlay" style="display:none" onclick="closeNoteModal(event)">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-handle"></div>
+    <h3 id="note-modal-title">Note</h3>
+    <div class="field">
+      <label>Note <span style="color:var(--text2);font-weight:400">(why this status, context…)</span></label>
+      <textarea id="m-note-only" rows="5" placeholder="e.g. Waiting on client sign-off"
+                autocorrect="on" autocapitalize="sentences"
+                style="width:100%;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:13px;outline:none;resize:vertical;font-family:inherit"></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeNoteModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveNote()">Save Note</button>
     </div>
   </div>
 </div>
@@ -795,8 +815,8 @@ function renderBoard() {
 
 function cardHtml(t) {
   const done   = t.status === 'done';
-  const onhold = t.status === 'onhold';
   const prio   = TASK_PRIORITIES.find(p => p.id === t.priority);
+  const statusColor = (STATUSES.find(s => s.id === t.status) || STATUSES[0]).color;
   const prioBadge = prio && t.priority !== 'normal'
     ? `<span style="font-size:9px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:1px 5px;border-radius:3px;background:${prio.color}20;color:${prio.color};border:1px solid ${prio.color}40;flex-shrink:0">${prio.label}</span>`
     : '';
@@ -808,11 +828,10 @@ function cardHtml(t) {
     <div class="card-meta">${esc(t.customerName||'')} › ${esc(t.projectName||'')}</div>
     ${t.notes?`<div class="card-note" style="font-size:12px;color:var(--text2);white-space:pre-wrap;margin:4px 0 2px;padding-left:7px;border-left:2px solid var(--border)">${esc(t.notes)}</div>`:''}
     <div class="card-actions">
-      ${t.status==='todo'       ? `<button class="card-btn advance" onclick="advance('${t.id}','inprogress')">→ In Progress</button>` : ''}
-      ${t.status==='inprogress' ? `<button class="card-btn advance" onclick="advance('${t.id}','done')">✓ Done</button>` : ''}
-      ${onhold                  ? `<button class="card-btn advance" onclick="advance('${t.id}','inprogress')">▶ Resume</button>` : ''}
-      ${done                    ? `<button class="card-btn" onclick="advance('${t.id}','todo')">↺ Reopen</button>` : ''}
-      ${(t.status==='todo'||t.status==='inprogress') ? `<button class="card-btn" onclick="advance('${t.id}','onhold')">⏸ Hold</button>` : ''}
+      <select class="card-status-select" style="color:${statusColor};border-color:${statusColor}66" onmousedown="event.stopPropagation()" onchange="advance('${t.id}',this.value)">
+        ${STATUSES.map(s=>`<option value="${s.id}"${s.id===t.status?' selected':''}>${s.label}</option>`).join('')}
+      </select>
+      <button class="card-btn${t.notes?' advance':''}" onclick="openNoteModal('${t.id}')">📝 Note</button>
       <button class="card-btn" onclick='openEditModal(${JSON.stringify(t)})'>✎ Edit</button>
       <button class="card-btn del" onclick="removeTask('${t.id}')">✕</button>
     </div>
@@ -1009,6 +1028,33 @@ window.saveTask = async function() {
   }
 };
 
+// ── Quick note ────────────────────────────────────────────────────────────────
+let editingNoteId = null;
+window.openNoteModal = function(id) {
+  const t = tasks.find(x => x.id === id);
+  if (!t) return;
+  editingNoteId = id;
+  document.getElementById('note-modal-title').textContent = `Note — ${t.title}`;
+  const ta = document.getElementById('m-note-only');
+  ta.value = t.notes || '';
+  document.getElementById('note-overlay').style.display = 'flex';
+  setTimeout(() => { ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); }, 80);
+};
+window.closeNoteModal = function(e) {
+  if (!e || e.target === document.getElementById('note-overlay')) {
+    document.getElementById('note-overlay').style.display = 'none';
+    editingNoteId = null;
+  }
+};
+window.saveNote = async function() {
+  if (!editingNoteId) return;
+  const notes = document.getElementById('m-note-only').value.trim();
+  const id = editingNoteId;
+  editingNoteId = null;
+  document.getElementById('note-overlay').style.display = 'none';
+  await updateDoc(doc(db,'tasks',id), { notes });
+};
+
 // ── Manage customers/projects ─────────────────────────────────────────────────
 function openManage() {
   renderManageList();
@@ -1127,7 +1173,7 @@ function cleanupDrag() {
 
 document.addEventListener('touchstart', e => {
   const card = e.target.closest('.card');
-  if (!card || e.target.closest('.card-btn')) return;
+  if (!card || e.target.closest('.card-btn, .card-status-select')) return;
   _drag.startY = e.touches[0].clientY;
   _drag.timer  = setTimeout(() => {
     _drag.active = true;
@@ -1182,6 +1228,7 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
     document.getElementById('modal').style.display          = 'none';
     document.getElementById('manage-overlay').style.display = 'none';
+    document.getElementById('note-overlay').style.display   = 'none';
     closeDrawer();
   }
 });

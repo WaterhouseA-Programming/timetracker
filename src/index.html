@@ -162,6 +162,8 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
 .task-act-btn.timer-btn:hover{background:var(--running);color:#000}
 .task-act-btn.advance{color:var(--accent);border-color:var(--accent)}
 .task-act-btn.advance:hover{background:var(--accent);color:#000}
+.task-status-select{padding:3px 6px;border-radius:4px;border:1px solid var(--border);background:var(--surface);font-family:'Plus Jakarta Sans',sans-serif;font-size:10px;font-weight:600;cursor:pointer;transition:all .15s;outline:none}
+.task-status-select:hover{filter:brightness(1.25)}
 .task-add-btn{padding:8px;border:1px dashed var(--border);border-radius:8px;background:transparent;color:var(--muted);font-size:11px;cursor:pointer;text-align:center;transition:all .15s;width:100%;font-family:'Plus Jakarta Sans',sans-serif}
 .task-add-btn:hover{border-color:#444;color:var(--muted2)}
 .task-card-onhold{border-color:#ff980040!important}
@@ -1446,6 +1448,7 @@ function taskCardHtml(t) {
   const isActive = Object.values(activeTimers).some(at => at.taskId === t.id);
   const prio = TASK_PRIORITIES.find(p=>p.id===t.priority);
   const showPrio = prio && t.priority !== 'normal';
+  const statusColor = (TASK_STATUSES.find(s=>s.id===t.status)||TASK_STATUSES[0]).color;
   const blockers = (t.dependsOn||[]).filter(depId=>{ const d=taskMap[depId]; return d&&d.status!=='done'; });
   const isBlocked = blockers.length > 0;
   const cardCls = [
@@ -1464,15 +1467,13 @@ function taskCardHtml(t) {
     <div class="task-meta">${esc(t.customerName||'')} › ${esc(t.projectName||'')}</div>
     ${t.notes?`<div class="task-note" style="font-size:11px;color:var(--muted2);white-space:pre-wrap;margin:4px 0 2px;padding-left:7px;border-left:2px solid var(--border)">${esc(t.notes)}</div>`:''}
     <div class="task-actions">
-      ${t.status==='todo'       ?`<button class="task-act-btn timer-btn" onclick="startTimerFromTask('${t.id}')">▶ Timer</button>`:''}
-      ${t.status==='inprogress' ?`<button class="task-act-btn timer-btn" onclick="startTimerFromTask('${t.id}')">▶ Timer</button>`:''}
-      ${t.status==='todo'       ?`<button class="task-act-btn advance" onclick="advanceTask('${t.id}','inprogress')">→ Progress</button>`:''}
-      ${t.status==='inprogress' ?`<button class="task-act-btn advance" onclick="advanceTask('${t.id}','done')">✓ Done</button>`:''}
-      ${t.status==='onhold'     ?`<button class="task-act-btn advance" onclick="advanceTask('${t.id}','inprogress')">▶ Resume</button>`:''}
-      ${done                    ?`<button class="task-act-btn" onclick="advanceTask('${t.id}','todo')">↺ Reopen</button>`:''}
-      ${(t.status==='todo'||t.status==='inprogress')?`<button class="task-act-btn" onclick="advanceTask('${t.id}','onhold')">⏸ Hold</button>`:''}
+      ${(t.status==='todo'||t.status==='inprogress')?`<button class="task-act-btn timer-btn" onclick="startTimerFromTask('${t.id}')">▶ Timer</button>`:''}
+      <select class="task-status-select" style="color:${statusColor};border-color:${statusColor}66" title="Change status" onmousedown="event.stopPropagation()" onchange="advanceTask('${t.id}',this.value)">
+        ${TASK_STATUSES.map(s=>`<option value="${s.id}"${s.id===t.status?' selected':''}>${s.label}</option>`).join('')}
+      </select>
       ${!done?`<button class="task-act-btn" onclick="openLogTimeModal('${t.id}')">⏱ Log</button>`:''}
-      <button class="task-act-btn" onclick="openEditTaskModal('${t.id}')">✎</button>
+      <button class="task-act-btn${t.notes?' advance':''}" onclick="openNoteModal('${t.id}')" title="${t.notes?'Edit note':'Add note'}">📝 Note</button>
+      <button class="task-act-btn" onclick="openEditTaskModal('${t.id}')" title="Edit task">✎</button>
       <button class="task-act-btn copy-btn" data-title="${esc(t.title)}" onclick="copyTaskTitle(this)">⎘</button>
       <button class="task-act-btn" style="margin-left:auto" onclick="removeTask('${t.id}')">✕</button>
     </div>
@@ -1604,6 +1605,26 @@ window.doEditTask = async function(id) {
     projectId:proj.id, projectName:proj.name,
     priority, notes, dependsOn,
   });
+};
+
+function openNoteModal(id) {
+  const t = taskMap[id]; if (!t || !db) return;
+  showModal(`Note — ${esc(t.title)}`,
+    `<div class="form-field">
+       <label>Note <span style="color:var(--muted2);font-weight:400">(why this status, context…)</span></label>
+       <textarea id="m-note-only" rows="5" placeholder="e.g. Waiting on client sign-off" autocorrect="on" autocapitalize="sentences" style="width:100%;padding:9px 11px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none;resize:vertical;font-family:inherit">${esc(t.notes||'')}</textarea>
+     </div>`,
+    `<button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+     <button class="btn btn-primary" onclick="doSaveNote('${id}')">Save Note</button>`);
+  setTimeout(()=>{ const el=document.getElementById('m-note-only'); if(el){el.focus();el.setSelectionRange(el.value.length,el.value.length);} },50);
+}
+window.openNoteModal = openNoteModal;
+
+window.doSaveNote = async function(id) {
+  const notes = document.getElementById('m-note-only')?.value.trim() || '';
+  closeModal();
+  const { doc, updateDoc } = _fs;
+  await updateDoc(doc(db,'tasks',id), { notes });
 };
 
 function openLogTimeModal(id) {
