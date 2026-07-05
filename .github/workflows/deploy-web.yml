@@ -30,3 +30,11 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./tasks-web
           cname: ''   # leave blank unless you add a custom domain
+          # latest.yml is owned by release.yml. This workflow checks out the
+          # push commit, whose updates/latest.yml is still the PREVIOUS release
+          # (the new one is only committed to master at the end of the release
+          # job), so deploying it here would roll the desktop updater back.
+          # Exclude it from the publish and keep whatever release.yml put on
+          # gh-pages so the two workflows never fight over the manifest.
+          exclude_assets: 'updates/latest.yml'
+          keep_files: true
