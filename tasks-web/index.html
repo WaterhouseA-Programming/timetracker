@@ -579,6 +579,7 @@ let editingTaskId     = null;
 let editingIdeaId     = null;
 let editingProposalId = null;
 
+const DONE_LIMIT = 20; // Done column shows only the 20 most-recently-closed tasks
 const STATUSES = [
   { id:'todo',       label:'To Do',       color:'#555'    },
   { id:'inprogress', label:'In Progress', color:'#47c8ff' },
@@ -785,27 +786,41 @@ function renderBoard() {
   const noProjects = !allProjects.length;
   document.getElementById('cols').innerHTML = STATUSES.map(s => {
     let col = filtered.filter(t => t.status === s.id);
-    col.sort((a,b) => {
-      const pa = PRIO_ORDER[a.priority||'normal'] ?? 2;
-      const pb = PRIO_ORDER[b.priority||'normal'] ?? 2;
-      if (pa !== pb) return pa - pb;
-      const ta = a.statusChangedAt?.seconds ?? a.inProgressAt?.seconds ?? a.createdAt?.seconds ?? 0;
-      const tb = b.statusChangedAt?.seconds ?? b.inProgressAt?.seconds ?? b.createdAt?.seconds ?? 0;
-      return tb - ta;
-    });
+    const total = col.length;
+    if (s.id === 'done') {
+      // Done: most-recently-closed first, capped at 20
+      col.sort((a,b) => {
+        const ta = a.completedAt?.seconds ?? a.statusChangedAt?.seconds ?? a.createdAt?.seconds ?? 0;
+        const tb = b.completedAt?.seconds ?? b.statusChangedAt?.seconds ?? b.createdAt?.seconds ?? 0;
+        return tb - ta;
+      });
+      col = col.slice(0, DONE_LIMIT);
+    } else {
+      col.sort((a,b) => {
+        const pa = PRIO_ORDER[a.priority||'normal'] ?? 2;
+        const pb = PRIO_ORDER[b.priority||'normal'] ?? 2;
+        if (pa !== pb) return pa - pb;
+        const ta = a.statusChangedAt?.seconds ?? a.inProgressAt?.seconds ?? a.createdAt?.seconds ?? 0;
+        const tb = b.statusChangedAt?.seconds ?? b.inProgressAt?.seconds ?? b.createdAt?.seconds ?? 0;
+        return tb - ta;
+      });
+    }
     const cards = col.length
       ? col.map(t => cardHtml(t)).join('')
       : s.id === 'todo' && noProjects
         ? `<div class="empty"><div class="empty-icon">👋</div>Add customers &amp; projects<br>via Settings → Customers &amp; Projects</div>`
         : `<div class="empty"><div class="empty-icon">·</div>No tasks</div>`;
+    const hiddenNote = (s.id === 'done' && total > DONE_LIMIT)
+      ? `<div style="font-size:11px;color:var(--text2);text-align:center;padding:8px 0 2px">+${total-DONE_LIMIT} older done task${total-DONE_LIMIT>1?'s':''} hidden</div>` : '';
     const addBtns = s.id === 'todo' ? addButtons(cc, cp) : '';
     return `<div class="col" data-status="${s.id}" ondragover="taskDragOver(event)" ondragleave="taskDragLeave(event)" ondrop="taskDrop(event,'${s.id}')">
       <div class="col-hdr">
         <span class="col-dot" style="background:${s.color}"></span>
         ${s.label}
-        <span class="col-count">${col.length}</span>
+        <span class="col-count">${total}</span>
       </div>
       ${cards}
+      ${hiddenNote}
       ${addBtns}
     </div>`;
   }).join('');

@@ -635,6 +635,7 @@ const CATEGORIES = [
   { id:'Admin',    label:'📂 Admin',    color:'#ffaa00', bg:'rgba(255,170,0,.12)'   },
   { id:'Break',    label:'☕ Break',    color:'#888',    bg:'rgba(136,136,136,.12)' },
 ];
+const DONE_LIMIT = 20; // Done column shows only the 20 most-recently-closed tasks
 const TASK_STATUSES = [
   { id:'todo',       label:'To Do',      color:'#555'    },
   { id:'inprogress', label:'In Progress',color:'#47c8ff' },
@@ -1425,17 +1426,32 @@ function renderTasks() {
     </div>
     <div class="task-cols">
       ${TASK_STATUSES.map(s => {
-        const col = filtered.filter(t=>t.status===s.id).sort((a,b)=> {
-          const pa = PRIO_ORDER[a.priority||'normal'] ?? 2;
-          const pb = PRIO_ORDER[b.priority||'normal'] ?? 2;
-          if (pa !== pb) return pa - pb;
-          const ta = a.statusChangedAt?.seconds ?? a.inProgressAt?.seconds ?? a.createdAt?.seconds ?? 0;
-          const tb = b.statusChangedAt?.seconds ?? b.inProgressAt?.seconds ?? b.createdAt?.seconds ?? 0;
-          return tb - ta;
-        });
+        let col = filtered.filter(t=>t.status===s.id);
+        const total = col.length;
+        if (s.id==='done') {
+          // Done: most-recently-closed first, capped at 20
+          col.sort((a,b)=> {
+            const ta = a.completedAt?.seconds ?? a.statusChangedAt?.seconds ?? a.createdAt?.seconds ?? 0;
+            const tb = b.completedAt?.seconds ?? b.statusChangedAt?.seconds ?? b.createdAt?.seconds ?? 0;
+            return tb - ta;
+          });
+          col = col.slice(0, DONE_LIMIT);
+        } else {
+          col.sort((a,b)=> {
+            const pa = PRIO_ORDER[a.priority||'normal'] ?? 2;
+            const pb = PRIO_ORDER[b.priority||'normal'] ?? 2;
+            if (pa !== pb) return pa - pb;
+            const ta = a.statusChangedAt?.seconds ?? a.inProgressAt?.seconds ?? a.createdAt?.seconds ?? 0;
+            const tb = b.statusChangedAt?.seconds ?? b.inProgressAt?.seconds ?? b.createdAt?.seconds ?? 0;
+            return tb - ta;
+          });
+        }
+        const hiddenNote = (s.id==='done' && total>DONE_LIMIT)
+          ? `<div style="font-size:10px;color:var(--muted2);text-align:center;padding:8px 0 2px">+${total-DONE_LIMIT} older done task${total-DONE_LIMIT>1?'s':''} hidden</div>` : '';
         return `<div class="task-col" data-status="${s.id}" ondragover="taskDragOver(event)" ondragleave="taskDragLeave(event)" ondrop="taskDrop(event,'${s.id}')">
-          <div class="task-col-header"><span class="col-dot" style="background:${s.color}"></span>${s.label}<span style="margin-left:auto">${col.length}</span></div>
+          <div class="task-col-header"><span class="col-dot" style="background:${s.color}"></span>${s.label}<span style="margin-left:auto">${total}</span></div>
           ${col.map(t=>taskCardHtml(t)).join('')}
+          ${hiddenNote}
           ${s.id==='todo' ? getAddBtns(fc,fp) : ''}
         </div>`;
       }).join('')}

@@ -11,6 +11,13 @@ on:
 permissions:
   contents: write
 
+# Shares gh-pages-deploy with deploy-web.yml so the two never push to gh-pages
+# at the same time. Queue rather than cancel — a release build must never be
+# killed mid-flight by a PWA deploy.
+concurrency:
+  group: gh-pages-deploy
+  cancel-in-progress: false
+
 jobs:
   release:
     runs-on: windows-latest

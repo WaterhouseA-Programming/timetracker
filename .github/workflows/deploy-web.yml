@@ -10,6 +10,14 @@ on:
 permissions:
   contents: write
 
+# Serialize with release.yml: both push to gh-pages, and overlapping Pages
+# builds make one fail with "Deployment failed, try again later". Sharing a
+# group (queue, don't cancel) keeps the two gh-pages pushes from racing without
+# ever cancelling an in-flight release build.
+concurrency:
+  group: gh-pages-deploy
+  cancel-in-progress: false
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
