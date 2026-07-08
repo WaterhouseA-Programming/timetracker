@@ -1,8 +1,8 @@
-version: 1.0.61
+version: 1.0.62
 files:
-  - url: https://github.com/WaterhouseA-Programming/timetracker/releases/download/v1.0.61/TimeTracker-Setup-1.0.61.exe
-    sha512: uhmQWeD2OiTurkbKCDjB+O0x/ZlIqb9AolJOvuaV5KiyUSd7QePpFlSy2IQk0tiOET+GFQpUvhFv0k0RAHReqw==
-    size: 76428752
-path: https://github.com/WaterhouseA-Programming/timetracker/releases/download/v1.0.61/TimeTracker-Setup-1.0.61.exe
-sha512: uhmQWeD2OiTurkbKCDjB+O0x/ZlIqb9AolJOvuaV5KiyUSd7QePpFlSy2IQk0tiOET+GFQpUvhFv0k0RAHReqw==
-releaseDate: '2026-07-05T22:47:37.476Z'
+  - url: https://github.com/WaterhouseA-Programming/timetracker/releases/download/v1.0.62/TimeTracker-Setup-1.0.62.exe
+    sha512: 7wbgKoFyT4rY/QQJaZL6b5WaDUU6m+DlH8MLLKAprvKJbS/I+MH0BqWSgwWp445x7RR3xlvQqQVYPow87wOiXQ==
+    size: 76429089
+path: https://github.com/WaterhouseA-Programming/timetracker/releases/download/v1.0.62/TimeTracker-Setup-1.0.62.exe
+sha512: 7wbgKoFyT4rY/QQJaZL6b5WaDUU6m+DlH8MLLKAprvKJbS/I+MH0BqWSgwWp445x7RR3xlvQqQVYPow87wOiXQ==
+releaseDate: '2026-07-08T08:55:43.137Z'
