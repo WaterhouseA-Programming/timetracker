@@ -15,6 +15,8 @@ contextBridge.exposeInMainWorld('api', {
 
   // ── Notifications ─────────────────────────────────────────────────────────
   sendNotification: (payload)  => ipcRenderer.send('send-notification', payload),
+  setNotificationsPaused: (until) => ipcRenderer.invoke('set-notifications-paused', until),
+  getNotificationsPaused: ()      => ipcRenderer.invoke('get-notifications-paused'),
 
   // ── CSV export ────────────────────────────────────────────────────────────
   exportCsv: (rows)            => ipcRenderer.invoke('export-csv', rows),

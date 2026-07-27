@@ -102,6 +102,11 @@ function saveSettings(s) {
   fs.writeFileSync(SETTINGS_FILE, JSON.stringify(s, null, 2));
 }
 
+// ─── Notification pause ───────────────────────────────────────────────────────
+// Timestamp (ms) until which native notifications/prompts are suppressed.
+let notificationsPausedUntil = loadSettings().notificationsPausedUntil || 0;
+function notificationsPaused() { return Date.now() < notificationsPausedUntil; }
+
 // ─── Migration helper — read old data.json if it exists ──────────────────────
 const LEGACY_FILE = path.join(os.homedir(), 'AppData', 'Roaming', 'TimeTracker', 'data.json');
 function getLegacyData() {
@@ -318,6 +323,7 @@ function checkClaudeActivity() {
 }
 
 function promptClaudeTime() {
+  if (notificationsPaused()) return;
   if (!Notification.isSupported()) return;
   const n = new Notification({
     title: 'Logging Claude time?',
@@ -434,8 +440,17 @@ ipcMain.handle('save-fb-config', (_, cfg) => { const s = loadSettings(); s.fbCon
 
 // Native budget notification (fired by renderer after Firestore write)
 ipcMain.on('send-notification', (_, { title, body }) => {
+  if (notificationsPaused()) return;
   if (Notification.isSupported()) new Notification({ title, body }).show();
 });
+
+// Notification pause — persisted so it survives restarts
+ipcMain.handle('set-notifications-paused', (_, until) => {
+  notificationsPausedUntil = Number(until) || 0;
+  const s = loadSettings(); s.notificationsPausedUntil = notificationsPausedUntil; saveSettings(s);
+  return notificationsPausedUntil;
+});
+ipcMain.handle('get-notifications-paused', () => notificationsPausedUntil);
 
 // CSV export (needs native dialog + fs access)
 ipcMain.handle('export-csv', async (_, rows) => {

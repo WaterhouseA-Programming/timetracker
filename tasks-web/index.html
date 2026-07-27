@@ -43,6 +43,15 @@ header{display:flex;align-items:center;justify-content:space-between;padding:0 1
 .icon-btn{width:36px;height:36px;border-radius:9px;border:1px solid var(--border);background:var(--surface2);color:var(--text2);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:17px;transition:all .15s;flex-shrink:0}
 .icon-btn:hover{background:var(--surface3);color:var(--text)}
 .icon-btn:active{transform:scale(.92)}
+.icon-btn.paused{color:#ff9800;border-color:#ff980055;background:rgba(255,152,0,.12)}
+.notif-wrap{position:relative}
+.notif-menu{position:absolute;top:calc(100% + 8px);right:0;min-width:190px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:6px;box-shadow:0 8px 28px rgba(0,0,0,.4);z-index:60;display:none}
+.notif-menu.open{display:block}
+.notif-menu-item{display:block;width:100%;text-align:left;padding:10px 12px;border:none;background:transparent;color:var(--text);font-family:'Plus Jakarta Sans',sans-serif;font-size:13px;border-radius:8px;cursor:pointer}
+.notif-menu-item:hover{background:var(--surface2)}
+.notif-menu-item.resume{color:#4caf91}
+.notif-menu-sep{height:1px;background:var(--border);margin:5px 4px}
+.notif-menu-title{padding:6px 12px 8px;font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--text2);font-weight:700}
 
 /* ── Main ── */
 main{padding:14px 14px 96px;max-width:900px;margin:0 auto}
@@ -299,6 +308,17 @@ main{padding:14px 14px 96px;max-width:900px;margin:0 auto}
     <div class="status-pill">
       <div class="status-dot" id="sdot"></div>
       <span id="stext">Connecting…</span>
+    </div>
+    <div class="notif-wrap">
+      <button class="icon-btn" id="notif-btn" onclick="toggleNotifMenu(event)" title="Pause notifications">🔔</button>
+      <div class="notif-menu" id="notif-menu">
+        <div class="notif-menu-title" id="notif-menu-title">Notifications</div>
+        <button class="notif-menu-item" onclick="pauseNotifications(60)">Pause for 1 hour</button>
+        <button class="notif-menu-item" onclick="pauseNotifications(240)">Pause for 4 hours</button>
+        <button class="notif-menu-item" onclick="pauseNotifications('tomorrow')">Pause until tomorrow</button>
+        <div class="notif-menu-sep" id="notif-menu-sep" style="display:none"></div>
+        <button class="notif-menu-item resume" id="notif-resume" onclick="resumeNotifications()" style="display:none">Resume notifications</button>
+      </div>
     </div>
     <button class="icon-btn" onclick="openDrawer()" title="Settings">⚙</button>
   </div>
@@ -1270,6 +1290,66 @@ document.addEventListener('keydown', e => {
   }
 });
 
+// ── Notification pause ──────────────────────────────────────────────────────
+let notifPausedUntil = Number(localStorage.getItem('tt_notif_paused_until') || 0);
+function notificationsPaused() { return Date.now() < notifPausedUntil; }
+
+function pauseNotifications(minutesOrTomorrow) {
+  let until;
+  if (minutesOrTomorrow === 'tomorrow') {
+    const d = new Date();
+    d.setDate(d.getDate() + 1);
+    d.setHours(7, 0, 0, 0);
+    until = d.getTime();
+  } else {
+    until = Date.now() + minutesOrTomorrow * 60_000;
+  }
+  notifPausedUntil = until;
+  localStorage.setItem('tt_notif_paused_until', String(until));
+  closeNotifMenu();
+  renderNotifBtn();
+}
+function resumeNotifications() {
+  notifPausedUntil = 0;
+  localStorage.setItem('tt_notif_paused_until', '0');
+  closeNotifMenu();
+  renderNotifBtn();
+}
+function toggleNotifMenu(e) {
+  if (e) e.stopPropagation();
+  document.getElementById('notif-menu')?.classList.toggle('open');
+}
+function closeNotifMenu() { document.getElementById('notif-menu')?.classList.remove('open'); }
+document.addEventListener('click', closeNotifMenu);
+
+function renderNotifBtn() {
+  const btn    = document.getElementById('notif-btn');
+  const title  = document.getElementById('notif-menu-title');
+  const resume = document.getElementById('notif-resume');
+  const sep    = document.getElementById('notif-menu-sep');
+  if (!btn) return;
+  const paused = notificationsPaused();
+  btn.classList.toggle('paused', paused);
+  btn.textContent = paused ? '🔕' : '🔔';
+  if (paused) {
+    const until = new Date(notifPausedUntil);
+    const sameDay = until.toDateString() === new Date().toDateString();
+    const t = until.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+    title.textContent = sameDay ? `Paused until ${t}` : `Paused until tomorrow ${t}`;
+    resume.style.display = 'block';
+    sep.style.display = 'block';
+  } else {
+    title.textContent = 'Notifications';
+    resume.style.display = 'none';
+    sep.style.display = 'none';
+  }
+}
+setInterval(() => { if (notifPausedUntil && !notificationsPaused()) { notifPausedUntil = 0; renderNotifBtn(); } }, 30_000);
+renderNotifBtn();
+window.pauseNotifications  = pauseNotifications;
+window.resumeNotifications = resumeNotifications;
+window.toggleNotifMenu     = toggleNotifMenu;
+
 // ── Notifications ─────────────────────────────────────────────────────────────
 (function initNotifications() {
   if (!('Notification' in window)) return;
@@ -1279,6 +1359,7 @@ document.addEventListener('keydown', e => {
 
   function maybeNotify() {
     if (!db) return; // not connected yet
+    if (notificationsPaused()) return;
     const now  = new Date();
     const day  = now.getDay();   // 0 = Sunday
     const hour = now.getHours();
@@ -1321,6 +1402,7 @@ document.addEventListener('keydown', e => {
   // Stale in-progress warning (task in progress for >5 days)
   function checkStale() {
     if (!db) return;
+    if (notificationsPaused()) return;
     const cutoff = Date.now() - 5 * 24 * 60 * 60 * 1000;
     const stale  = tasks.filter(t =>
       t.status === 'inprogress' &&

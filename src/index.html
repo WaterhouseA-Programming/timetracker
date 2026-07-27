@@ -137,8 +137,10 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
 .temp-row .temp-val{font-size:11px;width:36px;text-align:right;flex-shrink:0}
 
 /* ── Tasks ── */
-.task-cols{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:14px}
-.task-col{display:flex;flex-direction:column;gap:7px;border-radius:8px;transition:background .15s,box-shadow .15s}
+/* Columns keep a usable min width and scroll horizontally when the window is
+   too narrow to fit all four, instead of squishing down to unreadable slivers. */
+.task-cols{display:grid;grid-template-columns:repeat(4,minmax(210px,1fr));gap:14px;overflow-x:auto;padding-bottom:6px}
+.task-col{min-width:0;display:flex;flex-direction:column;gap:7px;border-radius:8px;transition:background .15s,box-shadow .15s}
 .task-col.drag-over{background:rgba(71,200,255,.06);box-shadow:inset 0 0 0 2px rgba(71,200,255,.4)}
 .task-card[draggable="true"]{cursor:grab}
 .task-card-dragging{opacity:.4;cursor:grabbing}
@@ -175,6 +177,18 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
 .task-dep-check input{accent-color:var(--accent);cursor:pointer}
 .task-filter-bar{display:flex;gap:8px;margin-bottom:16px}
 .task-filter-bar select{padding:6px 10px;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:'Plus Jakarta Sans',sans-serif;font-size:12px;outline:none}
+
+/* ── Pause-notifications control ── */
+.notif-wrap{position:relative}
+.notif-btn{display:inline-flex;align-items:center;gap:6px;padding:7px 12px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--muted2);font-family:'Plus Jakarta Sans',sans-serif;font-size:12px;cursor:pointer;transition:all .15s;white-space:nowrap}
+.notif-btn:hover{color:var(--text);border-color:#444}
+.notif-btn.paused{color:#ff9800;border-color:#ff980055;background:rgba(255,152,0,.08)}
+.notif-menu{position:absolute;top:calc(100% + 6px);right:0;min-width:180px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:5px;box-shadow:0 8px 24px rgba(0,0,0,.4);z-index:200;display:none}
+.notif-menu.open{display:block}
+.notif-menu-item{display:block;width:100%;text-align:left;padding:8px 10px;border:none;background:transparent;color:var(--text);font-family:'Plus Jakarta Sans',sans-serif;font-size:12px;border-radius:5px;cursor:pointer}
+.notif-menu-item:hover{background:var(--surface2)}
+.notif-menu-item.resume{color:#4caf91}
+.notif-menu-sep{height:1px;background:var(--border);margin:4px 2px}
 
 /* ── Manage / settings ── */
 .settings-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px 20px;margin-bottom:20px}
@@ -273,7 +287,7 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
   .nav-item::before { content: attr(data-icon); }
   .nav-section { display: none; }
   .charts-grid { grid-template-columns: 1fr; }
-  .task-cols { grid-template-columns: 1fr 1fr 1fr 1fr; }
+  /* .task-cols keeps its base min-width + horizontal scroll (see above) */
   .summary-grid { grid-template-columns: repeat(2, 1fr); }
 }
 
@@ -369,6 +383,19 @@ button, input, select, textarea, a, [onclick], .nav-item, .task-act-btn, .task-a
             <div class="fb-dot" id="fb-dot"></div>
             <span id="fb-status">Not connected</span>
             <span class="fb-link" onclick="showPage('manage',document.querySelector('[data-page=manage]'))" style="margin-left:8px">Configure →</span>
+          </div>
+          <div class="notif-wrap">
+            <button class="notif-btn" id="notif-btn" onclick="toggleNotifMenu(event)" title="Pause Windows notifications">
+              <span id="notif-btn-icon">🔔</span><span id="notif-btn-label">Notifications</span>
+            </button>
+            <div class="notif-menu" id="notif-menu">
+              <button class="notif-menu-item" onclick="pauseNotifications(30)">Pause for 30 min</button>
+              <button class="notif-menu-item" onclick="pauseNotifications(60)">Pause for 1 hour</button>
+              <button class="notif-menu-item" onclick="pauseNotifications(240)">Pause for 4 hours</button>
+              <button class="notif-menu-item" onclick="pauseNotifications('tomorrow')">Pause until tomorrow</button>
+              <div class="notif-menu-sep" id="notif-menu-sep" style="display:none"></div>
+              <button class="notif-menu-item resume" id="notif-resume" onclick="resumeNotifications()" style="display:none">Resume notifications</button>
+            </div>
           </div>
           <button class="btn btn-primary" onclick="openAddTaskModal()">+ Add Task</button>
         </div>
@@ -600,6 +627,8 @@ if (typeof api === 'undefined') {
       if ('Notification' in window && Notification.permission === 'granted')
         new Notification(title, { body });
     },
+    setNotificationsPaused: async () => {},
+    getNotificationsPaused: async () => 0,
     exportCsv: async (rows) => {
       const blob = new Blob([rows.join('\n')], { type: 'text/csv' });
       const a = document.createElement('a');
@@ -1035,9 +1064,85 @@ function checkBudgetAlert(customerId, projectId) {
 }
 
 function fireAlert(title, body) {
-  api.sendNotification({ title, body });
+  // Skip the intrusive Windows notification while notifications are paused,
+  // but still show the in-app toast so nothing is missed.
+  if (!notificationsPaused()) api.sendNotification({ title, body });
   showToast(title, body);
 }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// PAUSE NOTIFICATIONS
+// ═══════════════════════════════════════════════════════════════════════════════
+let notifPausedUntil = Number(localStorage.getItem('tt_notif_paused_until') || 0);
+
+function notificationsPaused() { return Date.now() < notifPausedUntil; }
+
+function pauseNotifications(minutesOrTomorrow) {
+  let until;
+  if (minutesOrTomorrow === 'tomorrow') {
+    const d = new Date();
+    d.setDate(d.getDate() + 1);
+    d.setHours(7, 0, 0, 0); // 7am next morning
+    until = d.getTime();
+  } else {
+    until = Date.now() + minutesOrTomorrow * 60_000;
+  }
+  notifPausedUntil = until;
+  localStorage.setItem('tt_notif_paused_until', String(until));
+  api.setNotificationsPaused(until);
+  closeNotifMenu();
+  renderNotifBtn();
+}
+
+function resumeNotifications() {
+  notifPausedUntil = 0;
+  localStorage.setItem('tt_notif_paused_until', '0');
+  api.setNotificationsPaused(0);
+  closeNotifMenu();
+  renderNotifBtn();
+}
+
+function toggleNotifMenu(e) {
+  if (e) e.stopPropagation();
+  document.getElementById('notif-menu')?.classList.toggle('open');
+}
+function closeNotifMenu() {
+  document.getElementById('notif-menu')?.classList.remove('open');
+}
+document.addEventListener('click', closeNotifMenu);
+
+function renderNotifBtn() {
+  const btn   = document.getElementById('notif-btn');
+  const icon  = document.getElementById('notif-btn-icon');
+  const label = document.getElementById('notif-btn-label');
+  const resume= document.getElementById('notif-resume');
+  const sep   = document.getElementById('notif-menu-sep');
+  if (!btn) return;
+  const paused = notificationsPaused();
+  btn.classList.toggle('paused', paused);
+  if (paused) {
+    icon.textContent  = '🔕';
+    const until = new Date(notifPausedUntil);
+    const now   = new Date();
+    const sameDay = until.toDateString() === now.toDateString();
+    const t = until.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+    label.textContent = sameDay ? `Paused until ${t}` : `Paused until tomorrow ${t}`;
+    resume.style.display = 'block';
+    sep.style.display = 'block';
+  } else {
+    icon.textContent  = '🔔';
+    label.textContent = 'Notifications';
+    resume.style.display = 'none';
+    sep.style.display = 'none';
+  }
+}
+
+// Re-render when a pause window expires so the button flips back automatically.
+setInterval(() => { if (notifPausedUntil && !notificationsPaused()) { notifPausedUntil = 0; renderNotifBtn(); } }, 30_000);
+
+window.pauseNotifications  = pauseNotifications;
+window.resumeNotifications = resumeNotifications;
+window.toggleNotifMenu     = toggleNotifMenu;
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // TRAY SYNC
@@ -2730,6 +2835,19 @@ async function boot() {
   }
 
   loadTheme();
+
+  // Restore notification-pause state (main process is source of truth on desktop)
+  try {
+    const until = await api.getNotificationsPaused();
+    if (typeof until === 'number' && until > Date.now()) {
+      notifPausedUntil = until;
+      localStorage.setItem('tt_notif_paused_until', String(until));
+    } else if (notifPausedUntil > Date.now()) {
+      // localStorage had a pause main.js didn't know about — re-sync it
+      api.setNotificationsPaused(notifPausedUntil);
+    }
+  } catch {}
+  renderNotifBtn();
 
   // Restore auto-start toggle
   const on = await api.getAutoStart();
