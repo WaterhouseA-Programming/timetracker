@@ -9,6 +9,18 @@
 <meta name="apple-mobile-web-app-title" content="Nimble Panda">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon.svg">
+<meta http-equiv="Content-Security-Policy"
+  content="default-src 'self';
+           script-src 'self' 'unsafe-inline' https://www.gstatic.com;
+           style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+           font-src https://fonts.gstatic.com;
+           connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://*.firebaseapp.com wss://*.firebaseio.com;
+           img-src 'self' data:;
+           worker-src 'self';
+           frame-src https://*.firebaseapp.com;
+           base-uri 'none';
+           form-action 'none';
+           object-src 'none'">
 <title>Nimble Panda — Tasks</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -946,7 +958,7 @@ function cardHtml(t) {
         ${STATUSES.map(s=>`<option value="${s.id}"${s.id===t.status?' selected':''}>${s.label}</option>`).join('')}
       </select>
       <button class="card-btn${t.notes?' advance':''}" onclick="openNoteModal('${t.id}')">📝 Note</button>
-      <button class="card-btn" onclick='openEditModal(${JSON.stringify(t)})'>✎ Edit</button>
+      <button class="card-btn" onclick="openEditModalById('${esc(t.id)}')">✎ Edit</button>
       <button class="card-btn del" onclick="removeTask('${t.id}')">✕</button>
     </div>
   </div>`;
@@ -1122,6 +1134,13 @@ window.openAddModal = function(presetCustId, presetProjId) {
   openModalWith(defaultVal);
   document.getElementById('modal').style.display = 'flex';
   setTimeout(() => document.getElementById('m-title').focus(), 80);
+};
+
+// Cards pass the task id, not the task object. Serialising the whole task into
+// an onclick attribute let any apostrophe in a title or note break out of it.
+window.openEditModalById = function(id) {
+  const t = tasks.find(x => x.id === id);
+  if (t) window.openEditModal(t);
 };
 
 window.openEditModal = function(t) {
@@ -1718,8 +1737,12 @@ window.removeProposal = async function(id) {
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(console.warn);
 
 // ── Utilities ─────────────────────────────────────────────────────────────────
+// Escapes ' and ` as well as the usual four. Values land inside single-quoted
+// HTML attributes (onclick="fn('...')"), so leaving apostrophes raw lets a
+// customer or task name close the attribute and inject its own handler.
 function esc(s) {
-  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+                      .replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/`/g,'&#96;');
 }
 function copyText(btn) {
   const text = btn.dataset.copy || '';
