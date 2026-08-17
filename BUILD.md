@@ -126,3 +126,36 @@ When you're ready to add auto-update:
 
 4. Tag a release on GitHub and upload the `.exe` + `latest.yml` from `dist/`.
    Users get a native "Update available" notification automatically.
+
+---
+
+## Known security limitation: updates are not code-signed
+
+`CSC_IDENTITY_AUTO_DISCOVERY: false` in `.github/workflows/release.yml` means builds
+go out unsigned, and `verifyUpdateCodeSignature: false` in `package.json` means the
+updater does not check a signature before installing.
+
+What this does and does not mean:
+
+- The download is still integrity-checked. `latest.yml` carries a sha512 of the
+  installer and electron-updater verifies it, so a corrupted or tampered-in-transit
+  file is rejected. Both the manifest and the binary come over HTTPS.
+- What is missing is a second, independent trust anchor. The manifest is served from
+  GitHub Pages and the installer from GitHub Releases, so anyone who can write to
+  this repository can publish an installer that every machine downloads and runs on
+  next quit, with `autoDownload` and `autoInstallOnAppQuit` both on. A signature
+  would mean a repo compromise alone is not enough.
+
+To close it you need a certificate, which costs money and an identity check:
+
+- **Azure Trusted Signing** is the cheapest current route (about $10/month, no
+  hardware token). Set `win.azureSignOptions` in `package.json`.
+- **An OV/EV code-signing certificate** from a CA also works but is pricier and EV
+  needs a hardware token, which does not suit unattended CI.
+
+Once signing is set up, drop `CSC_IDENTITY_AUTO_DISCOVERY: false` and set
+`verifyUpdateCodeSignature: true`. Do not set that flag true before signing exists
+or updates will fail to install.
+
+Until then, protect the repository itself: 2FA on the GitHub account, and treat push
+access to `master` as equivalent to code execution on every machine running the app.

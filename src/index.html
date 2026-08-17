@@ -651,7 +651,13 @@ button, input, select, textarea, a, [onclick], .nav-item, .task-act-btn, .task-a
   <div class="toast-body"  id="toast-body"></div>
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<!-- Pinned by hash: a compromised or swapped CDN file will not execute.
+     Hash matches the SRI cdnjs publishes for Chart.js 4.4.1. If you bump the
+     version you must regenerate this or the chart pages will silently break. -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"
+        integrity="sha512-CQBWl4fJHWbryGE+Pc7UAxWMUMNMWzWxF4SQo9CgkJIN1kx6djDQZjh3Y8SZ1d+6I+1zze6Z7kHXO7q3UyZAWw=="
+        crossorigin="anonymous"
+        referrerpolicy="no-referrer"></script>
 <script type="module">
 
 // ── API shim — graceful fallback when running as a web app (not in Electron) ──
@@ -2970,10 +2976,18 @@ document.addEventListener('keydown', e=>{ if(e.key==='Escape') closeModal(); });
 // BOOT
 // ═══════════════════════════════════════════════════════════════════════════════
 async function boot() {
-  // Register service worker (web only — no-op in Electron)
-  if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+  // Register service worker (web only — no-op in Electron). Tested by allowing
+  // http/https rather than excluding file:, because the desktop app now loads
+  // over app:// and must not start caching itself: a service worker there would
+  // serve a stale index.html after an auto-update.
+  if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
     navigator.serviceWorker.register('./sw.js').catch(console.warn);
   }
+
+  // Ask Chromium not to evict our storage. The Firebase session lives in
+  // IndexedDB; on the old file:// origin this could not be granted, which is why
+  // the app periodically lost its sign-in.
+  try { await navigator.storage?.persist?.(); } catch {}
 
   loadTheme();
 

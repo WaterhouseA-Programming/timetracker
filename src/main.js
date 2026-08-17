@@ -19,12 +19,55 @@
 const {
   app, BrowserWindow, Tray, Menu, nativeImage,
   ipcMain, dialog, powerMonitor, Notification, shell,
+  protocol, net,
 } = require('electron');
 const { autoUpdater } = require('electron-updater');
 const { exec }        = require('child_process');
 const path = require('path');
 const fs   = require('fs');
 const os   = require('os');
+const { pathToFileURL } = require('url');
+
+// ─── app:// scheme ────────────────────────────────────────────────────────────
+// The renderer used to load over file://, which Chromium treats as an opaque
+// origin. Opaque origins cannot be marked persistent, so the Firebase session in
+// IndexedDB (firebaseLocalStorageDb, under the "file__0" origin) was a first
+// candidate for eviction whenever Chromium reclaimed storage — the cause of the
+// app randomly asking for a fresh sign-in.
+//
+// A registered standard+secure scheme gets a real, persistable origin. This must
+// be declared before the app is ready.
+const APP_HOST   = 'timetracker';
+const APP_ORIGIN = `app://${APP_HOST}`;
+const APP_INDEX  = `${APP_ORIGIN}/index.html`;
+
+protocol.registerSchemesAsPrivileged([{
+  scheme: 'app',
+  privileges: {
+    standard: true,        // gives it a real origin rather than an opaque one
+    secure: true,          // counts as a secure context (needed for storage APIs)
+    supportFetchAPI: true,
+    // Service workers stay off deliberately — see registerAppProtocol below.
+  },
+}]);
+
+function registerAppProtocol() {
+  protocol.handle('app', request => {
+    const url = new URL(request.url);
+    if (url.host !== APP_HOST) return new Response('Not found', { status: 404 });
+
+    const rel    = decodeURIComponent(url.pathname).replace(/^\/+/, '') || 'index.html';
+    const target = path.resolve(__dirname, rel);
+
+    // Containment check: path.resolve collapses '..', so anything that climbs out
+    // of src/ lands outside __dirname and is refused. Without this the scheme
+    // would be an arbitrary local-file read.
+    if (target !== __dirname && !target.startsWith(__dirname + path.sep)) {
+      return new Response('Forbidden', { status: 403 });
+    }
+    return net.fetch(pathToFileURL(target).toString());
+  });
+}
 
 // ─── Auto-updater ─────────────────────────────────────────────────────────────
 // Fetch latest.yml from GitHub Pages (CDN, no rate limits, no auth).
@@ -151,12 +194,14 @@ function createWindow() {
       nodeIntegration: false,
       contextIsolation: true,
       webSecurity: true,
+      sandbox: true,        // explicit rather than relying on the default
+      webviewTag: false,    // nothing uses <webview>; it is an injection surface
       preload: path.join(__dirname, 'preload.js'),
     },
     show: false,
   });
 
-  mainWindow.loadFile(path.join(__dirname, 'index.html'));
+  mainWindow.loadURL(APP_INDEX);
   mainWindow.once('ready-to-show', () => {
     checkForUpdates();
     // Show the window unless this is a boot launch via auto-start (login item)
@@ -174,10 +219,10 @@ function createWindow() {
     return { action: 'deny' };
   });
 
-  // The renderer is a local file and never navigates. Block anything that tries,
-  // so injected script cannot replace the app with a remote page.
+  // The renderer is local and never navigates. Block anything that tries, so
+  // injected script cannot replace the app with a remote page.
   mainWindow.webContents.on('will-navigate', (e, url) => {
-    if (!url.startsWith('file://')) e.preventDefault();
+    if (!url.startsWith(APP_ORIGIN + '/')) e.preventDefault();
   });
 }
 
@@ -497,6 +542,7 @@ ipcMain.handle('window-close',    () => mainWindow?.hide());
 // ─── App lifecycle ────────────────────────────────────────────────────────────
 app.whenReady().then(() => {
   app.setAppUserModelId('com.timetracker.app');
+  registerAppProtocol();
 
   tray = new Tray(makeTrayIcon(false));
   tray.on('click',       () => createWindow());
