@@ -97,7 +97,7 @@ jobs:
         # Deploy directly here so Pages is always current after a build.
         # Pushes made by GITHUB_TOKEN don't trigger other workflows, so relying
         # on deploy-web.yml to pick up the latest.yml commit would leave Pages stale.
-        uses: peaceiris/actions-gh-pages@v4
+        uses: peaceiris/actions-gh-pages@84c30a85c19949d7eee79c4ff27748b70285e453 # v4.1.0
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./tasks-web
