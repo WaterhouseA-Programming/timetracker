@@ -23,8 +23,9 @@
 :root {
   --bg:#0a0a0a; --surface:#111; --surface2:#1a1a1a; --border:#222; --border-hover:#3d3d3d;
   --accent:#e8ff47; --accent2:#47c8ff; --red:#ff4757;
-  --text:#f0f0f0; --muted:#555; --muted2:#888; --running:#47ff8a;
+  --text:#f0f0f0; --muted:#838383; --muted2:#a0a0a0; --running:#47ff8a;
   --on-accent:#000;              /* text sitting on an accent/running fill */
+  --red-fill:#d93646;            /* red used as a background behind white text */
   --warn:#ffaa00;
   --accent-tint:rgba(232,255,71,.05);
   --overlay:rgba(10,10,10,.94);
@@ -32,7 +33,7 @@
   --p-green:#47ff8a; --p-blue:#47c8ff; --p-amber:#ffaa00; --p-orange:#ff9800;
   --p-purple:#c847ff; --p-pink:#ff6b9d; --p-cyan:#47ffe0; --p-red:#ff4757;
   --p-indigo:#7c8cf8; --p-gold:#f5a32a; --p-teal:#4caf91;
-  --p-grey:#888; --p-grey-dim:#555;
+  --p-grey:#a0a0a0; --p-grey-dim:#8a8a8a;
   --fs:1;                        /* global font scale, set from Settings */
 }
 /* Light theme. Every text colour here is checked against --surface (#fff) and
@@ -43,6 +44,7 @@
   --accent:#4a7000; --accent2:#00618c; --red:#c2182b;
   --text:#141414; --muted:#656565; --muted2:#4d4d4d; --running:#136b32;
   --on-accent:#fff;
+  --red-fill:#c2182b;
   --warn:#8a5300;
   --accent-tint:rgba(74,112,0,.10);
   --overlay:rgba(242,242,239,.96);
@@ -60,7 +62,7 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
 .win-controls{-webkit-app-region:no-drag;display:flex;gap:8px}
 .win-btn{width:28px;height:28px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--muted2);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:calc(14px * var(--fs,1));transition:all .15s}
 .win-btn:hover{background:var(--surface2);color:var(--text)}
-.win-btn.close:hover{background:var(--red);color:#fff;border-color:var(--red)}
+.win-btn.close:hover{background:var(--red-fill);color:#fff;border-color:var(--red-fill)}
 
 /* ── Layout ── */
 #app{display:flex;height:calc(100vh - 44px)}
@@ -83,7 +85,7 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
 .tbr-proj{font-size:calc(13px * var(--fs,1));font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:4px}
 .tbr-cats{display:flex;gap:5px;flex-wrap:wrap}
 .tbr-elapsed{font-family:'Plus Jakarta Sans',sans-serif;font-size:calc(20px * var(--fs,1));font-weight:700;letter-spacing:.05em;min-width:80px;text-align:right;flex-shrink:0}
-.tbr-stop{padding:7px 14px;background:var(--red);color:#fff;border:none;border-radius:6px;font-family:'Plus Jakarta Sans',sans-serif;font-size:calc(11px * var(--fs,1));cursor:pointer;transition:opacity .15s;letter-spacing:.04em;flex-shrink:0}
+.tbr-stop{padding:7px 14px;background:var(--red-fill);color:#fff;border:none;border-radius:6px;font-family:'Plus Jakarta Sans',sans-serif;font-size:calc(11px * var(--fs,1));cursor:pointer;transition:opacity .15s;letter-spacing:.04em;flex-shrink:0}
 .tbr-stop:hover{opacity:.85}
 .tbr-stop-all{width:100%;padding:7px;background:transparent;border:none;border-top:1px solid var(--border);color:var(--red);font-family:'Plus Jakarta Sans',sans-serif;font-size:calc(11px * var(--fs,1));font-weight:600;cursor:pointer;letter-spacing:.04em}
 .tbr-stop-all:hover{background:var(--surface2)}
@@ -105,7 +107,7 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
 .btn-ghost{background:transparent;color:var(--muted2)}
 .btn-ghost:hover{color:var(--text);background:var(--surface2)}
 .btn-danger{background:transparent;color:var(--red);border-color:var(--red)}
-.btn-danger:hover{background:var(--red);color:#fff}
+.btn-danger:hover{background:var(--red-fill);color:#fff}
 
 /* ── Customer cards ── */
 .customer-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;margin-bottom:14px;overflow:hidden}
@@ -2520,9 +2522,23 @@ window._runConfirm = function() { if (_confirmFn) { _confirmFn(); _confirmFn = n
 async function toggleAutoStart(on) { await api.setAutoStart(on); }
 window.toggleAutoStart = toggleAutoStart;
 
+// Chromium will not re-resolve a var()-derived colour on an element that has a
+// CSS transition when the custom property changes at the root — the element
+// keeps the old palette until it is recreated. Swapping the theme with all
+// transitions suppressed for one frame forces every element onto the new values
+// (and kills the colour-fade flicker at the same time).
+function swapThemeWithoutTransitions(apply) {
+  const stop = document.createElement('style');
+  stop.textContent = '*,*::before,*::after{transition:none !important}';
+  document.head.appendChild(stop);
+  apply();
+  void document.body.offsetWidth;   // flush the new values
+  requestAnimationFrame(() => requestAnimationFrame(() => stop.remove()));
+}
+
 function toggleTheme(isLight) {
   const theme = isLight ? 'light' : 'dark';
-  document.body.setAttribute('data-theme', theme);
+  swapThemeWithoutTransitions(() => document.body.setAttribute('data-theme', theme));
   localStorage.setItem('tt_theme', theme);
   document.querySelector('meta[name="theme-color"]')?.setAttribute('content', isLight ? '#f2f2ef' : '#0a0a0a');
   // Canvas colours are baked in at draw time, so charts need a redraw on switch
