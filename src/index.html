@@ -21,33 +21,54 @@
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 :root {
-  --bg:#0a0a0a; --surface:#111; --surface2:#1a1a1a; --border:#222;
+  --bg:#0a0a0a; --surface:#111; --surface2:#1a1a1a; --border:#222; --border-hover:#3d3d3d;
   --accent:#e8ff47; --accent2:#47c8ff; --red:#ff4757;
   --text:#f0f0f0; --muted:#555; --muted2:#888; --running:#47ff8a;
+  --on-accent:#000;              /* text sitting on an accent/running fill */
+  --warn:#ffaa00;
+  --accent-tint:rgba(232,255,71,.05);
+  --overlay:rgba(10,10,10,.94);
+  /* Status / category palette — one entry per hue, re-tuned per theme */
+  --p-green:#47ff8a; --p-blue:#47c8ff; --p-amber:#ffaa00; --p-orange:#ff9800;
+  --p-purple:#c847ff; --p-pink:#ff6b9d; --p-cyan:#47ffe0; --p-red:#ff4757;
+  --p-indigo:#7c8cf8; --p-gold:#f5a32a; --p-teal:#4caf91;
+  --p-grey:#888; --p-grey-dim:#555;
+  --fs:1;                        /* global font scale, set from Settings */
 }
+/* Light theme. Every text colour here is checked against --surface (#fff) and
+   --surface2 for a contrast ratio of at least 4.5:1 — pale greys on white are
+   unreadable, so nothing lighter than ~#6e6e6e is allowed to carry text. */
 [data-theme="light"] {
-  --bg:#f5f5f3; --surface:#ffffff; --surface2:#ebebea; --border:#ddd;
-  --accent:#5a8a00; --accent2:#0077aa; --red:#cc2233;
-  --text:#1a1a1a; --muted:#bbb; --muted2:#666; --running:#1a7a3a;
+  --bg:#f2f2ef; --surface:#ffffff; --surface2:#e8e8e6; --border:#d2d2cd; --border-hover:#9a9a93;
+  --accent:#4a7000; --accent2:#00618c; --red:#c2182b;
+  --text:#141414; --muted:#656565; --muted2:#4d4d4d; --running:#136b32;
+  --on-accent:#fff;
+  --warn:#8a5300;
+  --accent-tint:rgba(74,112,0,.10);
+  --overlay:rgba(242,242,239,.96);
+  --p-green:#0f7a3d; --p-blue:#0b6ea8; --p-amber:#8a5300; --p-orange:#8a4b00;
+  --p-purple:#7b17b8; --p-pink:#b01253; --p-cyan:#0b6f70; --p-red:#c2182b;
+  --p-indigo:#4550c9; --p-gold:#8a5a00; --p-teal:#0f7a5e;
+  --p-grey:#5c5c5c; --p-grey-dim:#6e6e6e;
 }
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(--text);height:100vh;overflow:hidden;user-select:none;-webkit-app-region:no-drag}
 
 /* ── Titlebar ── */
 #titlebar{-webkit-app-region:drag;display:flex;align-items:center;justify-content:space-between;padding:0 16px;height:44px;background:var(--bg);border-bottom:1px solid var(--border);flex-shrink:0}
-.title{font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:15px;letter-spacing:.05em;color:var(--accent)}
+.title{font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:calc(15px * var(--fs,1));letter-spacing:.05em;color:var(--accent)}
 .win-controls{-webkit-app-region:no-drag;display:flex;gap:8px}
-.win-btn{width:28px;height:28px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--muted2);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;transition:all .15s}
+.win-btn{width:28px;height:28px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--muted2);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:calc(14px * var(--fs,1));transition:all .15s}
 .win-btn:hover{background:var(--surface2);color:var(--text)}
 .win-btn.close:hover{background:var(--red);color:#fff;border-color:var(--red)}
 
 /* ── Layout ── */
 #app{display:flex;height:calc(100vh - 44px)}
 #sidebar{width:210px;flex-shrink:0;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column}
-.nav-item{padding:12px 18px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted2);cursor:pointer;transition:all .15s;border-left:2px solid transparent}
+.nav-item{padding:12px 18px;font-size:calc(12px * var(--fs,1));letter-spacing:.08em;text-transform:uppercase;color:var(--muted2);cursor:pointer;transition:all .15s;border-left:2px solid transparent}
 .nav-item:hover{color:var(--text);background:var(--surface2)}
-.nav-item.active{color:var(--accent);border-left-color:var(--accent);background:rgba(232,255,71,.05)}
-.nav-section{font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);padding:16px 18px 4px;margin-top:4px}
+.nav-item.active{color:var(--accent);border-left-color:var(--accent);background:var(--accent-tint)}
+.nav-section{font-size:calc(9px * var(--fs,1));letter-spacing:.12em;text-transform:uppercase;color:var(--muted);padding:16px 18px 4px;margin-top:4px}
 #main{flex:1;overflow:hidden;display:flex;flex-direction:column}
 
 /* ── Timer banner ── */
@@ -58,28 +79,28 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
 .tbr-dot.running{animation:pulse 1.5s ease-in-out infinite}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
 .tbr-info{flex:1;min-width:0}
-.tbr-label{font-size:10px;color:var(--muted2);text-transform:uppercase;letter-spacing:.1em;margin-bottom:2px}
-.tbr-proj{font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:4px}
+.tbr-label{font-size:calc(10px * var(--fs,1));color:var(--muted2);text-transform:uppercase;letter-spacing:.1em;margin-bottom:2px}
+.tbr-proj{font-size:calc(13px * var(--fs,1));font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:4px}
 .tbr-cats{display:flex;gap:5px;flex-wrap:wrap}
-.tbr-elapsed{font-family:'Plus Jakarta Sans',sans-serif;font-size:20px;font-weight:700;letter-spacing:.05em;min-width:80px;text-align:right;flex-shrink:0}
-.tbr-stop{padding:7px 14px;background:var(--red);color:#fff;border:none;border-radius:6px;font-family:'Plus Jakarta Sans',sans-serif;font-size:11px;cursor:pointer;transition:opacity .15s;letter-spacing:.04em;flex-shrink:0}
+.tbr-elapsed{font-family:'Plus Jakarta Sans',sans-serif;font-size:calc(20px * var(--fs,1));font-weight:700;letter-spacing:.05em;min-width:80px;text-align:right;flex-shrink:0}
+.tbr-stop{padding:7px 14px;background:var(--red);color:#fff;border:none;border-radius:6px;font-family:'Plus Jakarta Sans',sans-serif;font-size:calc(11px * var(--fs,1));cursor:pointer;transition:opacity .15s;letter-spacing:.04em;flex-shrink:0}
 .tbr-stop:hover{opacity:.85}
-.tbr-stop-all{width:100%;padding:7px;background:transparent;border:none;border-top:1px solid var(--border);color:var(--red);font-family:'Plus Jakarta Sans',sans-serif;font-size:11px;font-weight:600;cursor:pointer;letter-spacing:.04em}
+.tbr-stop-all{width:100%;padding:7px;background:transparent;border:none;border-top:1px solid var(--border);color:var(--red);font-family:'Plus Jakarta Sans',sans-serif;font-size:calc(11px * var(--fs,1));font-weight:600;cursor:pointer;letter-spacing:.04em}
 .tbr-stop-all:hover{background:var(--surface2)}
 .cat-pill-row{display:flex;gap:5px;flex-wrap:wrap;margin-top:6px}
-.cat-pill{padding:3px 10px;border-radius:20px;font-size:10px;cursor:pointer;border:1px solid transparent;transition:all .15s;white-space:nowrap;font-family:'Plus Jakarta Sans',sans-serif}
+.cat-pill{padding:3px 10px;border-radius:20px;font-size:calc(10px * var(--fs,1));cursor:pointer;border:1px solid transparent;transition:all .15s;white-space:nowrap;font-family:'Plus Jakarta Sans',sans-serif}
 .cat-pill.selected{border-color:currentColor;font-weight:600}
-.cat-badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;letter-spacing:.03em}
+.cat-badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:calc(10px * var(--fs,1));letter-spacing:.03em}
 
 /* ── Pages ── */
 .page{display:none;flex:1;overflow-y:auto;padding:24px}
 .page.active{display:block}
 .page-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:22px}
-.page-title{font-family:'Plus Jakarta Sans',sans-serif;font-size:20px;font-weight:700}
+.page-title{font-family:'Plus Jakarta Sans',sans-serif;font-size:calc(20px * var(--fs,1));font-weight:700}
 
 /* ── Buttons ── */
-.btn{padding:8px 16px;border-radius:6px;border:1px solid var(--border);font-family:'Plus Jakarta Sans',sans-serif;font-size:12px;cursor:pointer;transition:all .15s;letter-spacing:.04em}
-.btn-primary{background:var(--accent);color:#000;border-color:var(--accent);font-weight:600}
+.btn{padding:8px 16px;border-radius:6px;border:1px solid var(--border);font-family:'Plus Jakarta Sans',sans-serif;font-size:calc(12px * var(--fs,1));cursor:pointer;transition:all .15s;letter-spacing:.04em}
+.btn-primary{background:var(--accent);color:var(--on-accent);border-color:var(--accent);font-weight:600}
 .btn-primary:hover{opacity:.85}
 .btn-ghost{background:transparent;color:var(--muted2)}
 .btn-ghost:hover{color:var(--text);background:var(--surface2)}
@@ -90,51 +111,51 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
 .customer-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;margin-bottom:14px;overflow:hidden}
 .customer-header{padding:13px 18px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;transition:background .15s}
 .customer-header:hover{background:var(--surface2)}
-.customer-name{font-family:'Plus Jakarta Sans',sans-serif;font-size:14px;font-weight:600}
+.customer-name{font-family:'Plus Jakarta Sans',sans-serif;font-size:calc(14px * var(--fs,1));font-weight:600}
 .customer-actions{display:flex;gap:8px}
 .project-list{border-top:1px solid var(--border)}
 .project-row{padding:9px 18px 9px 30px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);transition:background .15s;gap:8px}
 .project-row:last-child{border-bottom:none}
 .project-row:hover{background:var(--surface2)}
-.project-name{font-size:12px;color:var(--muted2)}
-.start-btn{padding:4px 11px;background:transparent;border:1px solid var(--running);color:var(--running);border-radius:4px;font-family:'Plus Jakarta Sans',sans-serif;font-size:11px;cursor:pointer;transition:all .15s;letter-spacing:.03em;white-space:nowrap}
-.start-btn:hover,.start-btn.active-timer{background:var(--running);color:#000}
+.project-name{font-size:calc(12px * var(--fs,1));color:var(--muted2)}
+.start-btn{padding:4px 11px;background:transparent;border:1px solid var(--running);color:var(--running);border-radius:4px;font-family:'Plus Jakarta Sans',sans-serif;font-size:calc(11px * var(--fs,1));cursor:pointer;transition:all .15s;letter-spacing:.03em;white-space:nowrap}
+.start-btn:hover,.start-btn.active-timer{background:var(--running);color:var(--on-accent)}
 
 /* ── Log ── */
 .summary-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-bottom:22px}
 .summary-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px}
-.summary-card .label{font-size:10px;color:var(--muted2);text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px}
-.summary-card .value{font-family:'Plus Jakarta Sans',sans-serif;font-size:22px;font-weight:700;color:var(--accent)}
+.summary-card .label{font-size:calc(10px * var(--fs,1));color:var(--muted2);text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px}
+.summary-card .value{font-family:'Plus Jakarta Sans',sans-serif;font-size:calc(22px * var(--fs,1));font-weight:700;color:var(--accent)}
 .filter-bar{display:flex;gap:8px;margin-bottom:18px;flex-wrap:wrap}
-.filter-bar select,.filter-bar input{padding:6px 10px;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:'Plus Jakarta Sans',sans-serif;font-size:12px;outline:none}
+.filter-bar select,.filter-bar input{padding:6px 10px;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:'Plus Jakarta Sans',sans-serif;font-size:calc(12px * var(--fs,1));outline:none}
 .filter-bar select:focus,.filter-bar input:focus{border-color:var(--accent)}
-.log-table{width:100%;border-collapse:collapse;font-size:12px}
-.log-table th{text-align:left;padding:7px 10px;color:var(--muted2);border-bottom:1px solid var(--border);font-weight:400;text-transform:uppercase;letter-spacing:.07em;font-size:10px}
+.log-table{width:100%;border-collapse:collapse;font-size:calc(12px * var(--fs,1))}
+.log-table th{text-align:left;padding:7px 10px;color:var(--muted2);border-bottom:1px solid var(--border);font-weight:400;text-transform:uppercase;letter-spacing:.07em;font-size:calc(10px * var(--fs,1))}
 .log-table td{padding:9px 10px;border-bottom:1px solid var(--border)}
 .log-table tr:last-child td{border-bottom:none}
 .log-table tr:hover td{background:var(--surface2)}
 .duration-cell{color:var(--accent);font-weight:500}
-.del-btn{background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:13px;padding:2px 5px;border-radius:4px;transition:all .15s}
+.del-btn{background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:calc(13px * var(--fs,1));padding:2px 5px;border-radius:4px;transition:all .15s}
 .del-btn:hover{color:var(--red);background:rgba(255,71,87,.1)}
 
 /* ── Charts ── */
 .charts-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:22px}
 .chart-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px}
 .chart-card.full{grid-column:1/-1}
-.chart-title{font-family:'Plus Jakarta Sans',sans-serif;font-size:12px;font-weight:700;color:var(--muted2);text-transform:uppercase;letter-spacing:.1em;margin-bottom:14px}
+.chart-title{font-family:'Plus Jakarta Sans',sans-serif;font-size:calc(12px * var(--fs,1));font-weight:700;color:var(--muted2);text-transform:uppercase;letter-spacing:.1em;margin-bottom:14px}
 .chart-period{display:flex;gap:5px;margin-bottom:16px}
-.period-btn{padding:4px 11px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--muted2);font-family:'Plus Jakarta Sans',sans-serif;font-size:11px;cursor:pointer;transition:all .15s}
-.period-btn.active{background:var(--accent);color:#000;border-color:var(--accent)}
+.period-btn{padding:4px 11px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--muted2);font-family:'Plus Jakarta Sans',sans-serif;font-size:calc(11px * var(--fs,1));cursor:pointer;transition:all .15s}
+.period-btn.active{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
 .legend-list{margin-top:12px;display:flex;flex-direction:column;gap:5px}
-.legend-item{display:flex;align-items:center;gap:7px;font-size:11px;color:var(--muted2)}
+.legend-item{display:flex;align-items:center;gap:7px;font-size:calc(11px * var(--fs,1));color:var(--muted2)}
 .legend-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
 .legend-val{margin-left:auto;color:var(--text);font-weight:500}
 #temp-grid{display:flex;flex-direction:column;gap:7px;margin-top:4px}
 .temp-row{display:flex;align-items:center;gap:8px}
-.temp-row .temp-label{font-size:11px;color:var(--muted2);width:80px;flex-shrink:0}
+.temp-row .temp-label{font-size:calc(11px * var(--fs,1));color:var(--muted2);width:80px;flex-shrink:0}
 .temp-row .temp-bar-track{flex:1;height:7px;background:var(--border);border-radius:4px;overflow:hidden}
 .temp-row .temp-bar-fill{height:100%;border-radius:4px;transition:width .5s ease}
-.temp-row .temp-val{font-size:11px;width:36px;text-align:right;flex-shrink:0}
+.temp-row .temp-val{font-size:calc(11px * var(--fs,1));width:36px;text-align:right;flex-shrink:0}
 
 /* ── Tasks ── */
 /* Columns keep a usable min width and scroll horizontally when the window is
@@ -144,145 +165,149 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
 .task-col.drag-over{background:rgba(71,200,255,.06);box-shadow:inset 0 0 0 2px rgba(71,200,255,.4)}
 .task-card[draggable="true"]{cursor:grab}
 .task-card-dragging{opacity:.4;cursor:grabbing}
-.task-col-header{padding:7px 12px;border-radius:6px;background:var(--surface2);font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted2);display:flex;align-items:center;gap:6px}
+.task-col-header{padding:7px 12px;border-radius:6px;background:var(--surface2);font-size:calc(10px * var(--fs,1));text-transform:uppercase;letter-spacing:.1em;color:var(--muted2);display:flex;align-items:center;gap:6px}
 .col-dot{width:7px;height:7px;border-radius:50%}
 .task-card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 12px;transition:border-color .15s}
-.task-card:hover{border-color:#333}
-.task-card-active{border-color:#4caf91!important;box-shadow:0 0 0 1px #4caf9140}
+.task-card:hover{border-color:var(--border-hover)}
+.task-card-active{border-color:var(--p-teal)!important;box-shadow:0 0 0 1px #4caf9140}
 .idea-card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin-bottom:10px;transition:border-color .15s}
-.idea-card:hover{border-color:#333}
-.idea-status-pill{font-size:10px;font-weight:600;padding:3px 8px;border-radius:20px;white-space:nowrap;flex-shrink:0}
-.task-timer-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#4caf91;margin-right:6px;animation:pulse 1.4s ease-in-out infinite;vertical-align:middle}
+.idea-card:hover{border-color:var(--border-hover)}
+.idea-status-pill{font-size:calc(10px * var(--fs,1));font-weight:600;padding:3px 8px;border-radius:20px;white-space:nowrap;flex-shrink:0}
+.task-timer-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--p-teal);margin-right:6px;animation:pulse 1.4s ease-in-out infinite;vertical-align:middle}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
-.task-title{font-size:12px;line-height:1.4;margin-bottom:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.task-title{font-size:calc(12px * var(--fs,1));line-height:1.4;margin-bottom:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
 .task-title.done{opacity:.4;text-decoration:line-through}
-.task-meta{font-size:10px;color:var(--muted2);margin-bottom:7px}
+.task-meta{font-size:calc(10px * var(--fs,1));color:var(--muted2);margin-bottom:7px}
 .task-actions{display:flex;gap:5px;flex-wrap:wrap}
-.task-act-btn{padding:3px 8px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--muted2);font-family:'Plus Jakarta Sans',sans-serif;font-size:10px;cursor:pointer;transition:all .15s}
-.task-act-btn:hover{color:var(--text);border-color:#444}
+.task-act-btn{padding:3px 8px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--muted2);font-family:'Plus Jakarta Sans',sans-serif;font-size:calc(10px * var(--fs,1));cursor:pointer;transition:all .15s}
+.task-act-btn:hover{color:var(--text);border-color:var(--border-hover)}
 .task-act-btn.timer-btn{color:var(--running);border-color:var(--running)}
-.task-act-btn.timer-btn:hover{background:var(--running);color:#000}
+.task-act-btn.timer-btn:hover{background:var(--running);color:var(--on-accent)}
 .task-act-btn.advance{color:var(--accent);border-color:var(--accent)}
-.task-act-btn.advance:hover{background:var(--accent);color:#000}
-.task-status-select{padding:3px 6px;border-radius:4px;border:1px solid var(--border);background:var(--surface);font-family:'Plus Jakarta Sans',sans-serif;font-size:10px;font-weight:600;cursor:pointer;transition:all .15s;outline:none}
+.task-act-btn.advance:hover{background:var(--accent);color:var(--on-accent)}
+.task-status-select{padding:3px 6px;border-radius:4px;border:1px solid var(--border);background:var(--surface);font-family:'Plus Jakarta Sans',sans-serif;font-size:calc(10px * var(--fs,1));font-weight:600;cursor:pointer;transition:all .15s;outline:none}
 .task-status-select:hover{filter:brightness(1.25)}
-.task-add-btn{padding:8px;border:1px dashed var(--border);border-radius:8px;background:transparent;color:var(--muted);font-size:11px;cursor:pointer;text-align:center;transition:all .15s;width:100%;font-family:'Plus Jakarta Sans',sans-serif}
-.task-add-btn:hover{border-color:#444;color:var(--muted2)}
+.task-add-btn{padding:8px;border:1px dashed var(--border);border-radius:8px;background:transparent;color:var(--muted);font-size:calc(11px * var(--fs,1));cursor:pointer;text-align:center;transition:all .15s;width:100%;font-family:'Plus Jakarta Sans',sans-serif}
+.task-add-btn:hover{border-color:var(--border-hover);color:var(--muted2)}
 .task-card-onhold{border-color:#ff980040!important}
 .task-card-blocked{border-color:#ff475740!important}
-.task-priority-badge{font-size:9px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:1px 5px;border-radius:3px;white-space:nowrap;flex-shrink:0}
-.task-blocked-badge{display:inline-flex;align-items:center;gap:3px;font-size:9px;font-weight:600;color:#ff4757;padding:2px 6px;border-radius:3px;background:rgba(255,71,87,.08);border:1px solid rgba(255,71,87,.2);margin-bottom:6px}
+.task-priority-badge{font-size:calc(9px * var(--fs,1));font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:1px 5px;border-radius:3px;white-space:nowrap;flex-shrink:0}
+.task-blocked-badge{display:inline-flex;align-items:center;gap:3px;font-size:calc(9px * var(--fs,1));font-weight:600;color:var(--red);padding:2px 6px;border-radius:3px;background:rgba(255,71,87,.08);border:1px solid rgba(255,71,87,.2);margin-bottom:6px}
 .task-dep-checks{display:flex;flex-direction:column;gap:5px;max-height:160px;overflow-y:auto;padding:6px 8px;background:var(--bg);border:1px solid var(--border);border-radius:6px}
-.task-dep-check{display:flex;align-items:center;gap:7px;font-size:11px;cursor:pointer}
+.task-dep-check{display:flex;align-items:center;gap:7px;font-size:calc(11px * var(--fs,1));cursor:pointer}
 .task-dep-check input{accent-color:var(--accent);cursor:pointer}
 .task-filter-bar{display:flex;gap:8px;margin-bottom:16px}
-.task-filter-bar select{padding:6px 10px;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:'Plus Jakarta Sans',sans-serif;font-size:12px;outline:none}
+.task-filter-bar select{padding:6px 10px;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:'Plus Jakarta Sans',sans-serif;font-size:calc(12px * var(--fs,1));outline:none}
 
 /* ── Pause-notifications control ── */
 .notif-wrap{position:relative}
-.notif-btn{display:inline-flex;align-items:center;gap:6px;padding:7px 12px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--muted2);font-family:'Plus Jakarta Sans',sans-serif;font-size:12px;cursor:pointer;transition:all .15s;white-space:nowrap}
-.notif-btn:hover{color:var(--text);border-color:#444}
-.notif-btn.paused{color:#ff9800;border-color:#ff980055;background:rgba(255,152,0,.08)}
+.notif-btn{display:inline-flex;align-items:center;gap:6px;padding:7px 12px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--muted2);font-family:'Plus Jakarta Sans',sans-serif;font-size:calc(12px * var(--fs,1));cursor:pointer;transition:all .15s;white-space:nowrap}
+.notif-btn:hover{color:var(--text);border-color:var(--border-hover)}
+.notif-btn.paused{color:var(--warn);border-color:var(--warn);background:rgba(255,152,0,.08)}
 .notif-menu{position:absolute;top:calc(100% + 6px);right:0;min-width:180px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:5px;box-shadow:0 8px 24px rgba(0,0,0,.4);z-index:200;display:none}
 .notif-menu.open{display:block}
-.notif-menu-item{display:block;width:100%;text-align:left;padding:8px 10px;border:none;background:transparent;color:var(--text);font-family:'Plus Jakarta Sans',sans-serif;font-size:12px;border-radius:5px;cursor:pointer}
+.notif-menu-item{display:block;width:100%;text-align:left;padding:8px 10px;border:none;background:transparent;color:var(--text);font-family:'Plus Jakarta Sans',sans-serif;font-size:calc(12px * var(--fs,1));border-radius:5px;cursor:pointer}
 .notif-menu-item:hover{background:var(--surface2)}
-.notif-menu-item.resume{color:#4caf91}
+.notif-menu-item.resume{color:var(--p-teal)}
 .notif-menu-sep{height:1px;background:var(--border);margin:4px 2px}
 
 /* ── Manage / settings ── */
 .settings-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px 20px;margin-bottom:20px}
 .settings-row{display:flex;align-items:center;justify-content:space-between;gap:16px}
-.settings-label{font-size:13px;font-weight:500;margin-bottom:3px}
-.settings-sub{font-size:11px;color:var(--muted2)}
+.settings-label{font-size:calc(13px * var(--fs,1));font-weight:500;margin-bottom:3px}
+.settings-sub{font-size:calc(11px * var(--fs,1));color:var(--muted2)}
 .toggle{position:relative;display:inline-block;cursor:pointer;flex-shrink:0}
 .toggle input{opacity:0;width:0;height:0;position:absolute}
 .toggle-track{display:block;width:40px;height:22px;background:var(--border);border-radius:11px;transition:background .2s;position:relative}
 .toggle input:checked~.toggle-track{background:var(--accent)}
-.toggle-thumb{position:absolute;top:3px;left:3px;width:16px;height:16px;background:#fff;border-radius:50%;transition:transform .2s}
+.toggle-thumb{position:absolute;top:3px;left:3px;width:16px;height:16px;background:#fff;border-radius:50%;transition:transform .2s;box-shadow:0 1px 2px rgba(0,0,0,.35)}
+.fs-picker{display:flex;gap:6px;flex-shrink:0}
+.fs-btn{padding:6px 12px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--muted2);font-family:'Plus Jakarta Sans',sans-serif;cursor:pointer;transition:all .15s;line-height:1.2}
+.fs-btn:hover{color:var(--text);border-color:var(--border-hover)}
+.fs-btn.active{background:var(--accent);color:var(--on-accent);border-color:var(--accent);font-weight:600}
 .toggle input:checked~.toggle-track .toggle-thumb{transform:translateX(18px)}
 
 /* ── Budget bars ── */
 .budget-bar-wrap{width:100%;padding:0 0 2px}
 .budget-bar-track{height:4px;background:var(--border);border-radius:2px;overflow:hidden;margin-top:3px}
 .budget-bar-fill{height:100%;border-radius:2px;transition:width .4s ease}
-.budget-label{font-size:10px;color:var(--muted2);display:flex;justify-content:space-between}
+.budget-label{font-size:calc(10px * var(--fs,1));color:var(--muted2);display:flex;justify-content:space-between}
 .budget-label .over{color:var(--red);font-weight:600}
-.budget-label .warn{color:#ffaa00;font-weight:600}
+.budget-label .warn{color:var(--warn);font-weight:600}
 
 /* ── Firebase status ── */
-.fb-row{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--muted2);margin-bottom:20px}
+.fb-row{display:flex;align-items:center;gap:8px;font-size:calc(11px * var(--fs,1));color:var(--muted2);margin-bottom:20px}
 .fb-dot{width:7px;height:7px;border-radius:50%;background:var(--muted);transition:all .3s;flex-shrink:0}
 .fb-dot.on{background:var(--running);box-shadow:0 0 6px var(--running)}
-.fb-link{color:var(--accent2);cursor:pointer;text-decoration:underline;text-underline-offset:2px;font-size:11px}
+.fb-link{color:var(--accent2);cursor:pointer;text-decoration:underline;text-underline-offset:2px;font-size:calc(11px * var(--fs,1))}
 
 /* ── Setup screen ── */
 .setup-wrap{max-width:460px;margin:20px auto 0}
 .setup-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:28px}
-.setup-card h3{font-family:'Plus Jakarta Sans',sans-serif;font-size:16px;font-weight:700;margin-bottom:8px}
-.setup-card p{font-size:12px;color:var(--muted2);line-height:1.7;margin-bottom:18px}
-.cfg-textarea{width:100%;padding:10px 12px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:'Plus Jakarta Sans',sans-serif;font-size:11px;outline:none;resize:vertical;line-height:1.5;transition:border-color .15s}
+.setup-card h3{font-family:'Plus Jakarta Sans',sans-serif;font-size:calc(16px * var(--fs,1));font-weight:700;margin-bottom:8px}
+.setup-card p{font-size:calc(12px * var(--fs,1));color:var(--muted2);line-height:1.7;margin-bottom:18px}
+.cfg-textarea{width:100%;padding:10px 12px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:'Plus Jakarta Sans',sans-serif;font-size:calc(11px * var(--fs,1));outline:none;resize:vertical;line-height:1.5;transition:border-color .15s}
 .cfg-textarea:focus{border-color:var(--accent)}
 
 /* ── Modal ── */
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;z-index:100;backdrop-filter:blur(4px)}
 .modal{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:26px;width:360px;animation:slideIn .2s ease}
 @keyframes slideIn{from{opacity:0;transform:translateY(-10px)}to{opacity:1;transform:translateY(0)}}
-.modal h3{font-family:'Plus Jakarta Sans',sans-serif;font-size:15px;font-weight:700;margin-bottom:18px}
+.modal h3{font-family:'Plus Jakarta Sans',sans-serif;font-size:calc(15px * var(--fs,1));font-weight:700;margin-bottom:18px}
 .form-field{margin-bottom:14px}
-.form-field label{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted2);margin-bottom:5px}
-.form-field input,.form-field select{width:100%;padding:9px 11px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:'Plus Jakarta Sans',sans-serif;font-size:12px;outline:none;transition:border-color .15s}
+.form-field label{display:block;font-size:calc(10px * var(--fs,1));text-transform:uppercase;letter-spacing:.1em;color:var(--muted2);margin-bottom:5px}
+.form-field input,.form-field select{width:100%;padding:9px 11px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:'Plus Jakarta Sans',sans-serif;font-size:calc(12px * var(--fs,1));outline:none;transition:border-color .15s}
 .form-field input:focus,.form-field select:focus{border-color:var(--accent)}
 .modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:18px}
 
 /* ── Migration banner ── */
-#migrate-banner{background:rgba(232,255,71,.08);border:1px solid rgba(232,255,71,.25);border-radius:10px;padding:14px 18px;margin-bottom:20px;display:none}
-#migrate-banner p{font-size:12px;color:var(--text);margin-bottom:10px;line-height:1.6}
+#migrate-banner{background:var(--accent-tint);border:1px solid rgba(232,255,71,.25);border-radius:10px;padding:14px 18px;margin-bottom:20px;display:none}
+#migrate-banner p{font-size:calc(12px * var(--fs,1));color:var(--text);margin-bottom:10px;line-height:1.6}
 #migrate-banner .actions{display:flex;gap:8px}
 
 /* ── Empty / toast ── */
-.empty{text-align:center;padding:48px 20px;color:var(--muted);font-size:12px}
-.empty .icon{font-size:32px;margin-bottom:10px}
+.empty{text-align:center;padding:48px 20px;color:var(--muted);font-size:calc(12px * var(--fs,1))}
+.empty .icon{font-size:calc(32px * var(--fs,1));margin-bottom:10px}
 #budget-toast{position:fixed;bottom:22px;right:22px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 18px;max-width:300px;z-index:200;display:none;animation:slideUp .3s ease;box-shadow:0 8px 32px rgba(0,0,0,.5)}
-#budget-toast.warn{border-color:#ffaa00}
+#budget-toast.warn{border-color:var(--warn)}
 #budget-toast.over{border-color:var(--red)}
-#budget-toast .toast-title{font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:13px;margin-bottom:4px}
-#budget-toast .toast-body{font-size:11px;color:var(--muted2)}
-#budget-toast .toast-close{position:absolute;top:7px;right:9px;background:none;border:none;color:var(--muted2);cursor:pointer;font-size:13px}
+#budget-toast .toast-title{font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:calc(13px * var(--fs,1));margin-bottom:4px}
+#budget-toast .toast-body{font-size:calc(11px * var(--fs,1));color:var(--muted2)}
+#budget-toast .toast-close{position:absolute;top:7px;right:9px;background:none;border:none;color:var(--muted2);cursor:pointer;font-size:calc(13px * var(--fs,1))}
 @keyframes slideUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
 
 /* ── Invoices ── */
 .invoice-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px 20px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;gap:12px}
-.invoice-card:hover{border-color:#333}
-.inv-num{font-family:'Plus Jakarta Sans',sans-serif;font-size:14px;font-weight:700;color:var(--accent)}
-.inv-meta{font-size:11px;color:var(--muted2);margin-top:3px}
-.inv-amount{font-family:'Plus Jakarta Sans',sans-serif;font-size:18px;font-weight:700;color:var(--text);text-align:right}
-.inv-amount .inv-status{display:block;font-family:'Plus Jakarta Sans',sans-serif;font-size:10px;font-weight:400;margin-top:2px;text-transform:uppercase;letter-spacing:.08em}
+.invoice-card:hover{border-color:var(--border-hover)}
+.inv-num{font-family:'Plus Jakarta Sans',sans-serif;font-size:calc(14px * var(--fs,1));font-weight:700;color:var(--accent)}
+.inv-meta{font-size:calc(11px * var(--fs,1));color:var(--muted2);margin-top:3px}
+.inv-amount{font-family:'Plus Jakarta Sans',sans-serif;font-size:calc(18px * var(--fs,1));font-weight:700;color:var(--text);text-align:right}
+.inv-amount .inv-status{display:block;font-family:'Plus Jakarta Sans',sans-serif;font-size:calc(10px * var(--fs,1));font-weight:400;margin-top:2px;text-transform:uppercase;letter-spacing:.08em}
 .inv-status.draft{color:var(--muted2)}
-.inv-status.sent{color:#ffaa00}
+.inv-status.sent{color:var(--warn)}
 .inv-status.paid{color:var(--running)}
 .inv-actions{display:flex;gap:6px;flex-shrink:0}
 
 /* Invoice preview modal */
 #invoice-preview{max-width:620px;width:100%;max-height:85vh;overflow-y:auto}
-.inv-preview-paper{background:#fff;color:#111;border-radius:6px;padding:36px 40px;font-family:'Plus Jakarta Sans',sans-serif;font-size:13px;line-height:1.6}
-.inv-preview-paper h1{font-family:'Plus Jakarta Sans',sans-serif;font-size:24px;font-weight:800;color:#000;margin-bottom:4px}
-.inv-preview-paper .inv-from{font-size:12px;color:#666;margin-bottom:28px}
+.inv-preview-paper{background:#fff;color:#111;border-radius:6px;padding:36px 40px;font-family:'Plus Jakarta Sans',sans-serif;font-size:calc(13px * var(--fs,1));line-height:1.6}
+.inv-preview-paper h1{font-family:'Plus Jakarta Sans',sans-serif;font-size:calc(24px * var(--fs,1));font-weight:800;color:#000;margin-bottom:4px}
+.inv-preview-paper .inv-from{font-size:calc(12px * var(--fs,1));color:#666;margin-bottom:28px}
 .inv-preview-paper .inv-to-block{margin-bottom:28px}
-.inv-preview-paper .inv-to-block .label{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:#999;margin-bottom:4px}
+.inv-preview-paper .inv-to-block .label{font-size:calc(10px * var(--fs,1));text-transform:uppercase;letter-spacing:.1em;color:#999;margin-bottom:4px}
 .inv-preview-paper table{width:100%;border-collapse:collapse;margin-bottom:24px}
-.inv-preview-paper th{text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:#999;border-bottom:1px solid #e5e5e5;padding:6px 8px}
-.inv-preview-paper td{padding:10px 8px;border-bottom:1px solid #f0f0f0;font-size:12px}
+.inv-preview-paper th{text-align:left;font-size:calc(10px * var(--fs,1));text-transform:uppercase;letter-spacing:.08em;color:#999;border-bottom:1px solid #e5e5e5;padding:6px 8px}
+.inv-preview-paper td{padding:10px 8px;border-bottom:1px solid #f0f0f0;font-size:calc(12px * var(--fs,1))}
 .inv-preview-paper td.right{text-align:right}
 .inv-preview-paper .inv-total-row{display:flex;justify-content:flex-end;gap:40px;border-top:2px solid #111;padding-top:14px;font-weight:600}
-.inv-preview-paper .inv-total-amount{font-family:'Plus Jakarta Sans',sans-serif;font-size:20px;font-weight:800}
+.inv-preview-paper .inv-total-amount{font-family:'Plus Jakarta Sans',sans-serif;font-size:calc(20px * var(--fs,1));font-weight:800}
 
 /* ── Responsive ── */
 
 /* Tablet: 640–860px — collapse sidebar to icon bar */
 @media(max-width:860px) {
   #sidebar { width: 52px; }
-  .nav-item { padding: 12px 0; text-align: center; font-size: 16px; letter-spacing: 0; border-left: 2px solid transparent; }
+  .nav-item { padding: 12px 0; text-align: center; font-size:calc(16px * var(--fs,1)); letter-spacing: 0; border-left: 2px solid transparent; }
   .nav-label { display: none; }
   .nav-item::before { content: attr(data-icon); }
   .nav-section { display: none; }
@@ -301,25 +326,25 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
   }
   .nav-item {
     flex: 1; min-width: 52px; padding: 8px 4px;
-    text-align: center; font-size: 18px;
+    text-align: center; font-size:calc(18px * var(--fs,1));
     border-left: none; border-top: 2px solid transparent;
     display: flex; flex-direction: column; align-items: center; gap: 2px;
   }
-  .nav-item.active { border-top-color: var(--accent); border-left-color: transparent; background: rgba(232,255,71,.05); }
+  .nav-item.active { border-top-color: var(--accent); border-left-color: transparent; background: var(--accent-tint); }
   .nav-section { display: none; }
   #main { flex: 1; min-height: 0; overflow: hidden; }
   .page { padding: 14px; }
   .page-header { margin-bottom: 14px; }
-  .page-title { font-size: 17px; }
+  .page-title { font-size:calc(17px * var(--fs,1)); }
   #timer-banner { padding: 10px 14px; gap: 10px; }
-  #timer-elapsed { font-size: 18px; min-width: 70px; }
+  #timer-elapsed { font-size:calc(18px * var(--fs,1)); min-width: 70px; }
   .charts-grid { grid-template-columns: 1fr; }
   .task-cols { grid-template-columns: 1fr; }
   .summary-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
   .summary-card { padding: 12px; }
-  .summary-card .value { font-size: 18px; }
+  .summary-card .value { font-size:calc(18px * var(--fs,1)); }
   .filter-bar { gap: 6px; }
-  .filter-bar select, .filter-bar input { font-size: 11px; padding: 5px 7px; }
+  .filter-bar select, .filter-bar input { font-size:calc(11px * var(--fs,1)); padding: 5px 7px; }
   /* Log table — hide less important columns on mobile */
   .log-table th:nth-child(4),
   .log-table td:nth-child(4),
@@ -330,8 +355,8 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
   .task-filter-bar { flex-wrap: wrap; }
   .task-filter-bar select { flex: 1; min-width: 120px; }
   .modal { padding: 20px; }
-  .cat-pill { font-size: 10px; padding: 3px 8px; }
-  #stop-btn { padding: 6px 12px; font-size: 11px; }
+  .cat-pill { font-size:calc(10px * var(--fs,1)); padding: 3px 8px; }
+  #stop-btn { padding: 6px 12px; font-size:calc(11px * var(--fs,1)); }
 }
 
 /* Remove 300ms tap delay on mobile */
@@ -482,7 +507,7 @@ button, input, select, textarea, a, [onclick], .nav-item, .task-act-btn, .task-a
           <span id="manage-fb-status">Not connected</span>
         </div>
         <div id="fb-setup-panel" style="margin-top:14px">
-          <p style="font-size:12px;color:var(--muted2);margin-bottom:10px;line-height:1.6">
+          <p style="font-size:calc(12px * var(--fs,1));color:var(--muted2);margin-bottom:10px;line-height:1.6">
             Paste your Firebase config to enable cross-device sync. <br>
             <a href="#" onclick="openFirebaseHelp()" style="color:var(--accent2)">How to get your config →</a>
           </p>
@@ -493,7 +518,7 @@ button, input, select, textarea, a, [onclick], .nav-item, .task-act-btn, .task-a
           </div>
           <div style="display:flex;gap:8px;align-items:center">
             <button class="btn btn-primary" onclick="connectFirebase()">Connect</button>
-            <span id="fb-error" style="font-size:11px;color:var(--red);display:none"></span>
+            <span id="fb-error" style="font-size:calc(11px * var(--fs,1));color:var(--red);display:none"></span>
           </div>
         </div>
       </div>
@@ -509,10 +534,19 @@ button, input, select, textarea, a, [onclick], .nav-item, .task-act-btn, .task-a
       <div class="settings-card">
         <div class="settings-row">
           <div><div class="settings-label">Theme</div><div class="settings-sub">Switch between dark and light mode</div></div>
-          <div style="display:flex;align-items:center;gap:8px;font-size:11px;color:var(--muted2)">
+          <div style="display:flex;align-items:center;gap:8px;font-size:calc(11px * var(--fs,1));color:var(--muted2)">
             <span id="theme-label-dark">Dark</span>
             <label class="toggle"><input type="checkbox" id="theme-toggle" onchange="toggleTheme(this.checked)"><span class="toggle-track"><span class="toggle-thumb"></span></span></label>
             <span id="theme-label-light">Light</span>
+          </div>
+        </div>
+        <div class="settings-row" style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">
+          <div><div class="settings-label">Text size</div><div class="settings-sub">Scales every label, number and button in the app</div></div>
+          <div class="fs-picker" id="fs-picker">
+            <button class="fs-btn" data-scale="0.9"  onclick="setFontScale(0.9)"  style="font-size:calc(11px * var(--fs,1))">Small</button>
+            <button class="fs-btn" data-scale="1"    onclick="setFontScale(1)"    style="font-size:calc(12px * var(--fs,1))">Default</button>
+            <button class="fs-btn" data-scale="1.15" onclick="setFontScale(1.15)" style="font-size:calc(13px * var(--fs,1))">Large</button>
+            <button class="fs-btn" data-scale="1.3"  onclick="setFontScale(1.3)"  style="font-size:calc(14px * var(--fs,1))">Larger</button>
           </div>
         </div>
       </div>
@@ -526,7 +560,7 @@ button, input, select, textarea, a, [onclick], .nav-item, .task-act-btn, .task-a
 
       <!-- Billing settings -->
       <div class="settings-card" id="billing-settings-card">
-        <div style="font-size:13px;font-weight:700;margin-bottom:14px">Billing Settings</div>
+        <div style="font-size:calc(13px * var(--fs,1));font-weight:700;margin-bottom:14px">Billing Settings</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
           <div class="form-field" style="margin-bottom:0">
             <label>Your Name / Business</label>
@@ -542,7 +576,7 @@ button, input, select, textarea, a, [onclick], .nav-item, .task-act-btn, .task-a
           </div>
           <div class="form-field" style="margin-bottom:0">
             <label>Currency</label>
-            <select id="billing-currency" onchange="debounceSaveSettings()" style="width:100%;padding:9px 11px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:'Plus Jakarta Sans',sans-serif;font-size:12px;outline:none">
+            <select id="billing-currency" onchange="debounceSaveSettings()" style="width:100%;padding:9px 11px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:'Plus Jakarta Sans',sans-serif;font-size:calc(12px * var(--fs,1));outline:none">
               <option value="£">£ GBP</option><option value="$">$ USD</option><option value="€">€ EUR</option>
             </select>
           </div>
@@ -554,7 +588,7 @@ button, input, select, textarea, a, [onclick], .nav-item, .task-act-btn, .task-a
         <div class="form-field" style="margin-bottom:0">
           <label>Address (shown on invoices)</label>
           <textarea id="billing-address" rows="3" oninput="debounceSaveSettings()" autocorrect="on" autocapitalize="sentences"
-            style="width:100%;padding:9px 11px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:'Plus Jakarta Sans',sans-serif;font-size:12px;outline:none;resize:vertical"
+            style="width:100%;padding:9px 11px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:'Plus Jakarta Sans',sans-serif;font-size:calc(12px * var(--fs,1));outline:none;resize:vertical"
             placeholder="123 Main St&#10;London, W1A 1AA"></textarea>
         </div>
       </div>
@@ -656,31 +690,42 @@ if (typeof api === 'undefined') {
 // ═══════════════════════════════════════════════════════════════════════════════
 // CONSTANTS
 // ═══════════════════════════════════════════════════════════════════════════════
+// Colours are CSS vars so they re-tune themselves in light mode (see :root).
+// Anything drawn on a <canvas> must go through resolveColor() first.
 const CATEGORIES = [
-  { id:'Coding',   label:'💻 Coding',   color:'#47ff8a', bg:'rgba(71,255,138,.12)'  },
-  { id:'Meeting',  label:'🤝 Meeting',  color:'#ff4757', bg:'rgba(255,71,87,.12)'   },
-  { id:'Research', label:'🔍 Research', color:'#47c8ff', bg:'rgba(71,200,255,.12)'  },
-  { id:'Design',   label:'✏️ Design',   color:'#c847ff', bg:'rgba(200,71,255,.12)'  },
-  { id:'Admin',    label:'📂 Admin',    color:'#ffaa00', bg:'rgba(255,170,0,.12)'   },
-  { id:'Break',    label:'☕ Break',    color:'#888',    bg:'rgba(136,136,136,.12)' },
+  { id:'Coding',   label:'💻 Coding',   color:'var(--p-green)',  bg:'rgba(71,255,138,.12)'  },
+  { id:'Meeting',  label:'🤝 Meeting',  color:'var(--p-red)',    bg:'rgba(255,71,87,.12)'   },
+  { id:'Research', label:'🔍 Research', color:'var(--p-blue)',   bg:'rgba(71,200,255,.12)'  },
+  { id:'Design',   label:'✏️ Design',   color:'var(--p-purple)', bg:'rgba(200,71,255,.12)'  },
+  { id:'Admin',    label:'📂 Admin',    color:'var(--p-amber)',  bg:'rgba(255,170,0,.12)'   },
+  { id:'Break',    label:'☕ Break',    color:'var(--p-grey)',   bg:'rgba(136,136,136,.12)' },
 ];
 const DONE_LIMIT = 20; // Done column shows only the 20 most-recently-closed tasks
 const TASK_STATUSES = [
-  { id:'todo',       label:'To Do',      color:'#555'    },
-  { id:'inprogress', label:'In Progress',color:'#47c8ff' },
-  { id:'onhold',     label:'On Hold',    color:'#ff9800' },
-  { id:'done',       label:'Done',       color:'#47ff8a' },
+  { id:'todo',       label:'To Do',      color:'var(--p-grey-dim)' },
+  { id:'inprogress', label:'In Progress',color:'var(--p-blue)'     },
+  { id:'onhold',     label:'On Hold',    color:'var(--p-orange)'   },
+  { id:'done',       label:'Done',       color:'var(--p-green)'    },
 ];
 const TASK_PRIORITIES = [
-  { id:'low',      label:'Low',      color:'#555'    },
-  { id:'normal',   label:'Normal',   color:'#47c8ff' },
-  { id:'high',     label:'High',     color:'#ffaa00' },
-  { id:'critical', label:'Critical', color:'#ff4757' },
+  { id:'low',      label:'Low',      color:'var(--p-grey-dim)' },
+  { id:'normal',   label:'Normal',   color:'var(--p-blue)'     },
+  { id:'high',     label:'High',     color:'var(--p-amber)'    },
+  { id:'critical', label:'Critical', color:'var(--p-red)'      },
 ];
 const PRIO_ORDER = { critical:0, high:1, normal:2, low:3 };
-const CHART_PALETTE = ['#e8ff47','#47c8ff','#ff6b9d','#47ff8a','#ff9f47','#c847ff','#47ffe0','#ff4757'];
+const CHART_PALETTE       = ['#e8ff47','#47c8ff','#ff6b9d','#47ff8a','#ff9f47','#c847ff','#47ffe0','#ff4757'];
+const CHART_PALETTE_LIGHT = ['#7a8f00','#0b6ea8','#b01253','#0f7a3d','#a35c00','#7b17b8','#0b6f70','#c2182b'];
+const isLightTheme = () => document.body.getAttribute('data-theme') === 'light';
+const chartPalette = () => isLightTheme() ? CHART_PALETTE_LIGHT : CHART_PALETTE;
+// Custom properties live on <body> (that is where data-theme is set), so resolve there.
+function resolveColor(v) {
+  if (typeof v !== 'string' || !v.startsWith('var(')) return v;
+  const name = v.slice(4, v.lastIndexOf(')')).trim();
+  return getComputedStyle(document.body).getPropertyValue(name).trim() || '#888';
+}
 
-function getCat(id) { return CATEGORIES.find(c=>c.id===id) || { id:'General',label:id||'General',color:'#555',bg:'rgba(85,85,85,.12)' }; }
+function getCat(id) { return CATEGORIES.find(c=>c.id===id) || { id:'General',label:id||'General',color:'var(--p-grey-dim)',bg:'rgba(85,85,85,.12)' }; }
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // STATE
@@ -1318,7 +1363,7 @@ function renderTracker() {
 
   const catPicker = `
     <div style="margin-bottom:18px">
-      <div style="font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted2);margin-bottom:8px">Category for new timers</div>
+      <div style="font-size:calc(10px * var(--fs,1));text-transform:uppercase;letter-spacing:.1em;color:var(--muted2);margin-bottom:8px">Category for new timers</div>
       <div class="cat-pill-row" id="tracker-cat-row">${CATEGORIES.map((c,i)=>`
         <button class="cat-pill${i===0?' selected':''}" style="color:${c.color};background:${i===0?c.bg:'transparent'}"
           onclick="selTrackerCat('${c.id}',this)">${c.label}</button>`).join('')}
@@ -1340,7 +1385,7 @@ function renderTracker() {
     }).join('');
     return `<div class="customer-card">
       <div class="customer-header"><span class="customer-name">${esc(c.name)}</span></div>
-      ${rows ? `<div class="project-list">${rows}</div>` : '<div style="padding:9px 18px 9px 30px;font-size:12px;color:var(--muted)">No projects</div>'}
+      ${rows ? `<div class="project-list">${rows}</div>` : '<div style="padding:9px 18px 9px 30px;font-size:calc(12px * var(--fs,1));color:var(--muted)">No projects</div>'}
     </div>`;
   }).join('');
 }
@@ -1462,10 +1507,10 @@ function renderManage() {
         <div style="display:flex;width:100%;align-items:center;justify-content:space-between">
           <span class="project-name">${esc(p.name)}</span>
           <div style="display:flex;gap:5px">
-            <button class="btn btn-ghost" style="font-size:10px;padding:3px 8px" onclick="openEditRate('${p.id}','${esc(p.name)}',${p.rateOverride||0})">
+            <button class="btn btn-ghost" style="font-size:calc(10px * var(--fs,1));padding:3px 8px" onclick="openEditRate('${p.id}','${esc(p.name)}',${p.rateOverride||0})">
               ${p.rateOverride ? sym+p.rateOverride+'/hr' : '+ rate'}
             </button>
-            <button class="btn btn-ghost" style="font-size:10px;padding:3px 8px" onclick="openEditBudget('${p.id}','${esc(p.name)}',${p.budgetHours||0})">
+            <button class="btn btn-ghost" style="font-size:calc(10px * var(--fs,1));padding:3px 8px" onclick="openEditBudget('${p.id}','${esc(p.name)}',${p.budgetHours||0})">
               ${p.budgetHours?p.budgetHours+'h budget':'+ budget'}
             </button>
             <button class="del-btn" onclick="deleteProject('${p.id}')">✕</button>
@@ -1477,11 +1522,11 @@ function renderManage() {
       <div class="customer-header">
         <span class="customer-name">${esc(c.name)}</span>
         <div class="customer-actions">
-          <button class="btn btn-ghost" style="font-size:11px;padding:5px 10px" onclick="openAddProject('${c.id}','${esc(c.name)}')">+ Project</button>
-          <button class="btn btn-danger" style="font-size:11px;padding:5px 10px" onclick="deleteCustomer('${c.id}')">Remove</button>
+          <button class="btn btn-ghost" style="font-size:calc(11px * var(--fs,1));padding:5px 10px" onclick="openAddProject('${c.id}','${esc(c.name)}')">+ Project</button>
+          <button class="btn btn-danger" style="font-size:calc(11px * var(--fs,1));padding:5px 10px" onclick="deleteCustomer('${c.id}')">Remove</button>
         </div>
       </div>
-      <div class="project-list">${rows||'<div style="padding:9px 18px 9px 30px;font-size:12px;color:var(--muted)">No projects</div>'}</div>
+      <div class="project-list">${rows||'<div style="padding:9px 18px 9px 30px;font-size:calc(12px * var(--fs,1));color:var(--muted)">No projects</div>'}</div>
     </div>`;
   }).join('');
 }
@@ -1552,7 +1597,7 @@ function renderTasks() {
           });
         }
         const hiddenNote = (s.id==='done' && total>DONE_LIMIT)
-          ? `<div style="font-size:10px;color:var(--muted2);text-align:center;padding:8px 0 2px">+${total-DONE_LIMIT} older done task${total-DONE_LIMIT>1?'s':''} hidden</div>` : '';
+          ? `<div style="font-size:calc(10px * var(--fs,1));color:var(--muted2);text-align:center;padding:8px 0 2px">+${total-DONE_LIMIT} older done task${total-DONE_LIMIT>1?'s':''} hidden</div>` : '';
         return `<div class="task-col" data-status="${s.id}" ondragover="taskDragOver(event)" ondragleave="taskDragLeave(event)" ondrop="taskDrop(event,'${s.id}')">
           <div class="task-col-header"><span class="col-dot" style="background:${s.color}"></span>${s.label}<span style="margin-left:auto">${total}</span></div>
           ${col.map(t=>taskCardHtml(t)).join('')}
@@ -1582,14 +1627,14 @@ function taskCardHtml(t) {
       <div class="task-title${done?' done':''}" style="margin-bottom:0" title="${esc(t.title)}">
         ${isActive?`<span class="task-timer-dot"></span>`:''}${esc(t.title)}
       </div>
-      ${showPrio?`<span class="task-priority-badge" style="background:${prio.color}20;color:${prio.color};border:1px solid ${prio.color}40">${prio.label}</span>`:'<span></span>'}
+      ${showPrio?`<span class="task-priority-badge" style="background:color-mix(in srgb, ${prio.color} 14%, transparent);color:${prio.color};border:1px solid color-mix(in srgb, ${prio.color} 30%, transparent)">${prio.label}</span>`:'<span></span>'}
     </div>
     ${isBlocked?`<div class="task-blocked-badge">⛔ Blocked by ${blockers.length} task${blockers.length>1?'s':''}</div>`:''}
     <div class="task-meta">${esc(t.customerName||'')} › ${esc(t.projectName||'')}${t.recurrence?` <span style="color:var(--accent);font-weight:600">· 🔁 ${t.recurrence==='monthly'?'Monthly':'Weekly'}</span>`:''}</div>
-    ${t.notes?`<div class="task-note" style="font-size:11px;color:var(--muted2);white-space:pre-wrap;margin:4px 0 2px;padding-left:7px;border-left:2px solid var(--border)">${esc(t.notes)}</div>`:''}
+    ${t.notes?`<div class="task-note" style="font-size:calc(11px * var(--fs,1));color:var(--muted2);white-space:pre-wrap;margin:4px 0 2px;padding-left:7px;border-left:2px solid var(--border)">${esc(t.notes)}</div>`:''}
     <div class="task-actions">
       ${(t.status==='todo'||t.status==='inprogress')?`<button class="task-act-btn timer-btn" onclick="startTimerFromTask('${t.id}')">▶ Timer</button>`:''}
-      <select class="task-status-select" style="color:${statusColor};border-color:${statusColor}66" title="Change status" onmousedown="event.stopPropagation()" onchange="advanceTask('${t.id}',this.value)">
+      <select class="task-status-select" style="color:${statusColor};border-color:color-mix(in srgb, ${statusColor} 45%, transparent)" title="Change status" onmousedown="event.stopPropagation()" onchange="advanceTask('${t.id}',this.value)">
         ${TASK_STATUSES.map(s=>`<option value="${s.id}"${s.id===t.status?' selected':''}>${s.label}</option>`).join('')}
       </select>
       ${!done?`<button class="task-act-btn" onclick="openLogTimeModal('${t.id}')">⏱ Log</button>`:''}
@@ -1621,13 +1666,13 @@ function openAddTaskModal() {
   showModal('New Task',
     `<div class="form-field">
        <label>Customer</label>
-       <select id="m-task-cust" onchange="updateTaskProjDropdown()" style="width:100%;padding:9px 11px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none">
+       <select id="m-task-cust" onchange="updateTaskProjDropdown()" style="width:100%;padding:9px 11px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:calc(12px * var(--fs,1));outline:none">
          ${custOpts}
        </select>
      </div>
      <div class="form-field">
        <label>Project</label>
-       <select id="m-task-proj" style="width:100%;padding:9px 11px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none"></select>
+       <select id="m-task-proj" style="width:100%;padding:9px 11px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:calc(12px * var(--fs,1));outline:none"></select>
      </div>
      <div class="form-field">
        <label>Task</label>
@@ -1635,15 +1680,15 @@ function openAddTaskModal() {
      </div>
      <div class="form-field">
        <label>Priority</label>
-       <select id="m-task-prio" style="width:100%;padding:9px 11px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none">${prioOpts}</select>
+       <select id="m-task-prio" style="width:100%;padding:9px 11px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:calc(12px * var(--fs,1));outline:none">${prioOpts}</select>
      </div>
      <div class="form-field">
        <label>Repeat</label>
-       <select id="m-task-recur" style="width:100%;padding:9px 11px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none"><option value="">Doesn't repeat</option><option value="weekly">Weekly</option><option value="monthly">Monthly</option></select>
+       <select id="m-task-recur" style="width:100%;padding:9px 11px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:calc(12px * var(--fs,1));outline:none"><option value="">Doesn't repeat</option><option value="weekly">Weekly</option><option value="monthly">Monthly</option></select>
      </div>
      <div class="form-field">
        <label>Note <span style="color:var(--muted2);font-weight:400">(why this status, context…)</span></label>
-       <textarea id="m-task-notes" rows="3" placeholder="e.g. Waiting on client sign-off" autocorrect="on" autocapitalize="sentences" style="width:100%;padding:9px 11px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none;resize:vertical;font-family:inherit"></textarea>
+       <textarea id="m-task-notes" rows="3" placeholder="e.g. Waiting on client sign-off" autocorrect="on" autocapitalize="sentences" style="width:100%;padding:9px 11px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:calc(12px * var(--fs,1));outline:none;resize:vertical;font-family:inherit"></textarea>
      </div>`,
     `<button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
      <button class="btn btn-primary" onclick="doAddTaskFromModal()">Add</button>`);
@@ -1681,17 +1726,17 @@ function openEditTaskModal(id) {
   const otherTasks = tasks.filter(x=>x.id!==id&&x.status!=='done');
   const depChecks = otherTasks.length
     ? otherTasks.map(x=>`<label class="task-dep-check"><input type="checkbox" value="${x.id}"${currentDeps.includes(x.id)?' checked':''}><span>${esc(x.title)}<span style="color:var(--muted2);margin-left:4px">(${esc(x.customerName||'')} › ${esc(x.projectName||'')})</span></span></label>`).join('')
-    : `<div style="font-size:11px;color:var(--muted2)">No other open tasks to link</div>`;
+    : `<div style="font-size:calc(11px * var(--fs,1));color:var(--muted2)">No other open tasks to link</div>`;
   showModal('Edit Task',
     `<div class="form-field">
        <label>Customer</label>
-       <select id="m-task-cust" onchange="updateTaskProjDropdown()" style="width:100%;padding:9px 11px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none">
+       <select id="m-task-cust" onchange="updateTaskProjDropdown()" style="width:100%;padding:9px 11px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:calc(12px * var(--fs,1));outline:none">
          ${custOpts}
        </select>
      </div>
      <div class="form-field">
        <label>Project</label>
-       <select id="m-task-proj" style="width:100%;padding:9px 11px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none"></select>
+       <select id="m-task-proj" style="width:100%;padding:9px 11px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:calc(12px * var(--fs,1));outline:none"></select>
      </div>
      <div class="form-field">
        <label>Task</label>
@@ -1699,15 +1744,15 @@ function openEditTaskModal(id) {
      </div>
      <div class="form-field">
        <label>Priority</label>
-       <select id="m-task-prio" style="width:100%;padding:9px 11px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none">${prioOpts}</select>
+       <select id="m-task-prio" style="width:100%;padding:9px 11px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:calc(12px * var(--fs,1));outline:none">${prioOpts}</select>
      </div>
      <div class="form-field">
        <label>Repeat</label>
-       <select id="m-task-recur" style="width:100%;padding:9px 11px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none">${recurOpts}</select>
+       <select id="m-task-recur" style="width:100%;padding:9px 11px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:calc(12px * var(--fs,1));outline:none">${recurOpts}</select>
      </div>
      <div class="form-field">
        <label>Note <span style="color:var(--muted2);font-weight:400">(why this status, context…)</span></label>
-       <textarea id="m-task-notes" rows="3" placeholder="e.g. Waiting on client sign-off" autocorrect="on" autocapitalize="sentences" style="width:100%;padding:9px 11px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none;resize:vertical;font-family:inherit">${esc(t.notes||'')}</textarea>
+       <textarea id="m-task-notes" rows="3" placeholder="e.g. Waiting on client sign-off" autocorrect="on" autocapitalize="sentences" style="width:100%;padding:9px 11px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:calc(12px * var(--fs,1));outline:none;resize:vertical;font-family:inherit">${esc(t.notes||'')}</textarea>
      </div>
      <div class="form-field">
        <label>Depends on (must finish first)</label>
@@ -1743,7 +1788,7 @@ function openNoteModal(id) {
   showModal(`Note — ${esc(t.title)}`,
     `<div class="form-field">
        <label>Note <span style="color:var(--muted2);font-weight:400">(why this status, context…)</span></label>
-       <textarea id="m-note-only" rows="5" placeholder="e.g. Waiting on client sign-off" autocorrect="on" autocapitalize="sentences" style="width:100%;padding:9px 11px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none;resize:vertical;font-family:inherit">${esc(t.notes||'')}</textarea>
+       <textarea id="m-note-only" rows="5" placeholder="e.g. Waiting on client sign-off" autocorrect="on" autocapitalize="sentences" style="width:100%;padding:9px 11px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:calc(12px * var(--fs,1));outline:none;resize:vertical;font-family:inherit">${esc(t.notes||'')}</textarea>
      </div>`,
     `<button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
      <button class="btn btn-primary" onclick="doSaveNote('${id}')">Save Note</button>`);
@@ -1772,24 +1817,24 @@ function openLogTimeModal(id) {
        <label>Duration</label>
        <div style="display:flex;gap:10px">
          <div style="flex:1">
-           <input id="m-log-h" type="number" min="0" max="23" placeholder="0" style="width:100%;padding:9px 11px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none">
-           <div style="font-size:10px;color:var(--muted2);margin-top:3px;text-align:center">hours</div>
+           <input id="m-log-h" type="number" min="0" max="23" placeholder="0" style="width:100%;padding:9px 11px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:calc(12px * var(--fs,1));outline:none">
+           <div style="font-size:calc(10px * var(--fs,1));color:var(--muted2);margin-top:3px;text-align:center">hours</div>
          </div>
          <div style="flex:1">
-           <input id="m-log-m" type="number" min="0" max="59" placeholder="0" style="width:100%;padding:9px 11px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none">
-           <div style="font-size:10px;color:var(--muted2);margin-top:3px;text-align:center">minutes</div>
+           <input id="m-log-m" type="number" min="0" max="59" placeholder="0" style="width:100%;padding:9px 11px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:calc(12px * var(--fs,1));outline:none">
+           <div style="font-size:calc(10px * var(--fs,1));color:var(--muted2);margin-top:3px;text-align:center">minutes</div>
          </div>
        </div>
      </div>
      <div class="form-field">
        <label>Category</label>
-       <select id="m-log-cat" style="width:100%;padding:9px 11px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none">${catOpts}</select>
+       <select id="m-log-cat" style="width:100%;padding:9px 11px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:calc(12px * var(--fs,1));outline:none">${catOpts}</select>
      </div>
      <div class="form-field">
        <label>Notes (optional)</label>
        <input id="m-log-note" type="text" placeholder="What did you work on?" autocorrect="on" autocapitalize="sentences">
      </div>
-     <div id="m-error" style="display:none;color:var(--red);font-size:12px;margin-top:4px"></div>`,
+     <div id="m-error" style="display:none;color:var(--red);font-size:calc(12px * var(--fs,1));margin-top:4px"></div>`,
     `<button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
      <button class="btn btn-primary" onclick="doLogTime('${t.customerId}','${esc(t.customerName)}','${t.projectId}','${esc(t.projectName)}')">Save Entry</button>`);
   setTimeout(() => document.getElementById('m-log-h')?.focus(), 50);
@@ -1830,10 +1875,10 @@ function addTask(cid, cname, pid, pname) {
   const prioOpts = TASK_PRIORITIES.map(p=>`<option value="${p.id}"${p.id==='normal'?' selected':''}>${p.label}</option>`).join('');
   showModal(`New Task — ${cname} › ${pname}`,
     `<div class="form-field"><label>Task</label><input id="m-task-title" type="text" placeholder="e.g. Update homepage copy" autocorrect="on" autocapitalize="sentences"></div>
-     <div class="form-field"><label>Priority</label><select id="m-task-prio" style="width:100%;padding:9px 11px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none">${prioOpts}</select></div>
-     <div class="form-field"><label>Repeat</label><select id="m-task-recur" style="width:100%;padding:9px 11px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none"><option value="">Doesn't repeat</option><option value="weekly">Weekly</option><option value="monthly">Monthly</option></select></div>
-     <div class="form-field"><label>Note <span style="color:var(--muted2);font-weight:400">(optional)</span></label><textarea id="m-task-notes" rows="3" placeholder="e.g. Waiting on client sign-off" autocorrect="on" autocapitalize="sentences" style="width:100%;padding:9px 11px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none;resize:vertical;font-family:inherit"></textarea></div>
-     <div id="m-error" style="display:none;color:var(--red);font-size:12px;margin-top:8px"></div>`,
+     <div class="form-field"><label>Priority</label><select id="m-task-prio" style="width:100%;padding:9px 11px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:calc(12px * var(--fs,1));outline:none">${prioOpts}</select></div>
+     <div class="form-field"><label>Repeat</label><select id="m-task-recur" style="width:100%;padding:9px 11px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:calc(12px * var(--fs,1));outline:none"><option value="">Doesn't repeat</option><option value="weekly">Weekly</option><option value="monthly">Monthly</option></select></div>
+     <div class="form-field"><label>Note <span style="color:var(--muted2);font-weight:400">(optional)</span></label><textarea id="m-task-notes" rows="3" placeholder="e.g. Waiting on client sign-off" autocorrect="on" autocapitalize="sentences" style="width:100%;padding:9px 11px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:calc(12px * var(--fs,1));outline:none;resize:vertical;font-family:inherit"></textarea></div>
+     <div id="m-error" style="display:none;color:var(--red);font-size:calc(12px * var(--fs,1));margin-top:8px"></div>`,
     `<button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
      <button class="btn btn-primary" onclick="doAddTask('${cid}','${esc(cname)}','${pid}','${esc(pname)}')">Add</button>`);
   setTimeout(()=>document.getElementById('m-task-title')?.focus(),50);
@@ -1969,10 +2014,10 @@ window.copyText = copyText;
 // UI — IDEAS
 // ═══════════════════════════════════════════════════════════════════════════════
 const IDEA_STATUSES = [
-  { id:'idea',      label:'Idea',      color:'#7c8cf8' },
-  { id:'exploring', label:'Exploring', color:'#f5a32a' },
-  { id:'building',  label:'Building',  color:'#4caf91' },
-  { id:'done',      label:'Done',      color:'#888'    },
+  { id:'idea',      label:'Idea',      color:'var(--p-indigo)' },
+  { id:'exploring', label:'Exploring', color:'var(--p-gold)'   },
+  { id:'building',  label:'Building',  color:'var(--p-teal)'   },
+  { id:'done',      label:'Done',      color:'var(--p-grey)'   },
 ];
 
 function renderIdeas() {
@@ -1993,10 +2038,10 @@ function renderIdeas() {
     return `<div class="idea-card" style="border-left:3px solid ${st.color}">
       <div style="display:flex;align-items:flex-start;gap:8px">
         <div style="flex:1">
-          <div style="font-size:13px;font-weight:600;margin-bottom:4px">${esc(idea.title)}</div>
-          ${idea.notes?`<div style="font-size:12px;color:var(--muted2);white-space:pre-wrap">${esc(idea.notes)}</div>`:''}
+          <div style="font-size:calc(13px * var(--fs,1));font-weight:600;margin-bottom:4px">${esc(idea.title)}</div>
+          ${idea.notes?`<div style="font-size:calc(12px * var(--fs,1));color:var(--muted2);white-space:pre-wrap">${esc(idea.notes)}</div>`:''}
         </div>
-        <span class="idea-status-pill" style="background:${st.color}20;color:${st.color}">${st.label}</span>
+        <span class="idea-status-pill" style="background:color-mix(in srgb, ${st.color} 14%, transparent);color:${st.color}">${st.label}</span>
       </div>
       <div style="display:flex;gap:6px;margin-top:10px">
         <button class="task-act-btn" onclick="openEditIdeaModal('${idea.id}')">✎ Edit</button>
@@ -2023,11 +2068,11 @@ function ideaModalBody(idea) {
   </div>
   <div class="form-field">
     <label>Notes (optional)</label>
-    <textarea id="m-idea-notes" rows="4" placeholder="Describe the idea, motivation, links…" autocorrect="on" autocapitalize="sentences" style="width:100%;padding:9px 11px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:'Plus Jakarta Sans',sans-serif;font-size:12px;outline:none;resize:vertical">${idea?esc(idea.notes||''):''}</textarea>
+    <textarea id="m-idea-notes" rows="4" placeholder="Describe the idea, motivation, links…" autocorrect="on" autocapitalize="sentences" style="width:100%;padding:9px 11px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:'Plus Jakarta Sans',sans-serif;font-size:calc(12px * var(--fs,1));outline:none;resize:vertical">${idea?esc(idea.notes||''):''}</textarea>
   </div>
   <div class="form-field">
     <label>Status</label>
-    <select id="m-idea-status" style="width:100%;padding:9px 11px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none">${statusOpts}</select>
+    <select id="m-idea-status" style="width:100%;padding:9px 11px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:calc(12px * var(--fs,1));outline:none">${statusOpts}</select>
   </div>`;
 }
 
@@ -2097,24 +2142,24 @@ function openLogTimeIdeaModal(id) {
        <label>Duration</label>
        <div style="display:flex;gap:10px">
          <div style="flex:1">
-           <input id="m-log-h" type="number" min="0" max="23" placeholder="0" style="width:100%;padding:9px 11px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none">
-           <div style="font-size:10px;color:var(--muted2);margin-top:3px;text-align:center">hours</div>
+           <input id="m-log-h" type="number" min="0" max="23" placeholder="0" style="width:100%;padding:9px 11px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:calc(12px * var(--fs,1));outline:none">
+           <div style="font-size:calc(10px * var(--fs,1));color:var(--muted2);margin-top:3px;text-align:center">hours</div>
          </div>
          <div style="flex:1">
-           <input id="m-log-m" type="number" min="0" max="59" placeholder="0" style="width:100%;padding:9px 11px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none">
-           <div style="font-size:10px;color:var(--muted2);margin-top:3px;text-align:center">minutes</div>
+           <input id="m-log-m" type="number" min="0" max="59" placeholder="0" style="width:100%;padding:9px 11px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:calc(12px * var(--fs,1));outline:none">
+           <div style="font-size:calc(10px * var(--fs,1));color:var(--muted2);margin-top:3px;text-align:center">minutes</div>
          </div>
        </div>
      </div>
      <div class="form-field">
        <label>Category</label>
-       <select id="m-log-cat" style="width:100%;padding:9px 11px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none">${catOpts}</select>
+       <select id="m-log-cat" style="width:100%;padding:9px 11px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:calc(12px * var(--fs,1));outline:none">${catOpts}</select>
      </div>
      <div class="form-field">
        <label>Notes (optional)</label>
        <input id="m-log-note" type="text" placeholder="What did you work on?" autocorrect="on" autocapitalize="sentences">
      </div>
-     <div id="m-error" style="display:none;color:var(--red);font-size:12px;margin-top:4px"></div>`,
+     <div id="m-error" style="display:none;color:var(--red);font-size:calc(12px * var(--fs,1));margin-top:4px"></div>`,
     `<button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
      <button class="btn btn-primary" onclick="doLogTimeIdea('${id}')">Save Entry</button>`);
   setTimeout(()=>document.getElementById('m-log-h')?.focus(),50);
@@ -2151,11 +2196,11 @@ window.doLogTimeIdea = doLogTimeIdea;
 // UI — OPPORTUNITIES
 // ═══════════════════════════════════════════════════════════════════════════════
 const PROPOSAL_STATUSES = [
-  { id:'new',       label:'New',       color:'#7c8cf8' },
-  { id:'exploring', label:'Exploring', color:'#f5a32a' },
-  { id:'proposed',  label:'Proposed',  color:'#47c8ff' },
-  { id:'won',       label:'Won',       color:'#4caf91' },
-  { id:'lost',      label:'Lost',      color:'#f55'    },
+  { id:'new',       label:'New',       color:'var(--p-indigo)' },
+  { id:'exploring', label:'Exploring', color:'var(--p-gold)'   },
+  { id:'proposed',  label:'Proposed',  color:'var(--p-blue)'   },
+  { id:'won',       label:'Won',       color:'var(--p-teal)'   },
+  { id:'lost',      label:'Lost',      color:'var(--p-red)'    },
 ];
 
 function renderProposals() {
@@ -2167,19 +2212,19 @@ function renderProposals() {
   }
   el.innerHTML = proposals.map(p => {
     const st    = PROPOSAL_STATUSES.find(s => s.id === p.status) || PROPOSAL_STATUSES[0];
-    const notes = p.notes ? `<div style="font-size:12px;color:var(--muted);margin-top:6px;white-space:pre-wrap">${esc(p.notes)}</div>` : '';
+    const notes = p.notes ? `<div style="font-size:calc(12px * var(--fs,1));color:var(--muted);margin-top:6px;white-space:pre-wrap">${esc(p.notes)}</div>` : '';
     return `<div class="idea-card" style="border-left:3px solid ${st.color}">
       <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:10px">
         <div style="flex:1;min-width:0">
-          <div style="font-size:13px;font-weight:600;margin-bottom:4px">${esc(p.title)}</div>
+          <div style="font-size:calc(13px * var(--fs,1));font-weight:600;margin-bottom:4px">${esc(p.title)}</div>
           ${notes}
         </div>
-        <span class="idea-status-pill" style="background:${st.color}20;color:${st.color}">${st.label}</span>
+        <span class="idea-status-pill" style="background:color-mix(in srgb, ${st.color} 14%, transparent);color:${st.color}">${st.label}</span>
       </div>
       <div style="display:flex;gap:6px">
-        <button class="btn btn-ghost" style="flex:1;padding:5px;font-size:11px" onclick="openEditProposalModal('${p.id}')">✎ Edit</button>
-        <button class="btn btn-ghost" style="flex:1;padding:5px;font-size:11px" onclick="cycleProposalStatus('${p.id}','${p.status}')">→ Next</button>
-        <button class="btn btn-ghost" style="padding:5px 10px;font-size:11px;color:var(--muted)" onclick="removeProposal('${p.id}')">✕</button>
+        <button class="btn btn-ghost" style="flex:1;padding:5px;font-size:calc(11px * var(--fs,1))" onclick="openEditProposalModal('${p.id}')">✎ Edit</button>
+        <button class="btn btn-ghost" style="flex:1;padding:5px;font-size:calc(11px * var(--fs,1))" onclick="cycleProposalStatus('${p.id}','${p.status}')">→ Next</button>
+        <button class="btn btn-ghost" style="padding:5px 10px;font-size:calc(11px * var(--fs,1));color:var(--muted)" onclick="removeProposal('${p.id}')">✕</button>
       </div>
     </div>`;
   }).join('');
@@ -2192,14 +2237,14 @@ function openAddProposalModal() {
     `<div class="form-field"><label>Title</label>
        <input id="m-prop-title" type="text" placeholder="e.g. NHS tender, referral from John…" autocorrect="on" autocapitalize="sentences"></div>
      <div class="form-field"><label>Status</label>
-       <select id="m-prop-status" style="width:100%;padding:9px 11px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none">
+       <select id="m-prop-status" style="width:100%;padding:9px 11px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:calc(12px * var(--fs,1));outline:none">
          <option value="new">New</option><option value="exploring">Exploring</option>
          <option value="proposed">Proposed</option><option value="won">Won</option><option value="lost">Lost</option></select></div>
      <div class="form-field"><label>Notes (optional)</label>
        <textarea id="m-prop-notes" rows="3" autocorrect="on" autocapitalize="sentences"
-         style="width:100%;padding:9px 11px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:'Plus Jakarta Sans',sans-serif;font-size:12px;outline:none;resize:vertical"
+         style="width:100%;padding:9px 11px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:'Plus Jakarta Sans',sans-serif;font-size:calc(12px * var(--fs,1));outline:none;resize:vertical"
          placeholder="Contact, value, deadline…"></textarea></div>
-     <div id="m-error" style="display:none;color:var(--red);font-size:12px;margin-top:8px"></div>`,
+     <div id="m-error" style="display:none;color:var(--red);font-size:calc(12px * var(--fs,1));margin-top:8px"></div>`,
     `<button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
      <button class="btn btn-primary" onclick="doAddProposal()">Add</button>`);
   setTimeout(() => document.getElementById('m-prop-title')?.focus(), 50);
@@ -2223,10 +2268,10 @@ function openEditProposalModal(id) {
     `<div class="form-field"><label>Title</label>
        <input id="m-prop-title" type="text" value="${esc(p.title)}" autocorrect="on" autocapitalize="sentences"></div>
      <div class="form-field"><label>Status</label>
-       <select id="m-prop-status" style="width:100%;padding:9px 11px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none">${statusOpts}</select></div>
+       <select id="m-prop-status" style="width:100%;padding:9px 11px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:calc(12px * var(--fs,1));outline:none">${statusOpts}</select></div>
      <div class="form-field"><label>Notes (optional)</label>
        <textarea id="m-prop-notes" rows="3" autocorrect="on" autocapitalize="sentences"
-         style="width:100%;padding:9px 11px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:'Plus Jakarta Sans',sans-serif;font-size:12px;outline:none;resize:vertical">${esc(p.notes||'')}</textarea></div>`,
+         style="width:100%;padding:9px 11px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:'Plus Jakarta Sans',sans-serif;font-size:calc(12px * var(--fs,1));outline:none;resize:vertical">${esc(p.notes||'')}</textarea></div>`,
     `<button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
      <button class="btn btn-primary" onclick="doEditProposal('${id}')">Save</button>`);
   setTimeout(() => document.getElementById('m-prop-title')?.focus(), 50);
@@ -2290,7 +2335,8 @@ function renderPie(canvasId, legendId, es, key) {
   es.forEach(e=>{ map[e[key]]=(map[e[key]]||0)+e.duration; });
   const labels=Object.keys(map), values=Object.values(map);
   const total=values.reduce((a,b)=>a+b,0);
-  const colors=labels.map((_,i)=>CHART_PALETTE[i%CHART_PALETTE.length]);
+  const pal=chartPalette();
+  const colors=labels.map((_,i)=>pal[i%pal.length]);
   const canvas=document.getElementById(canvasId), ctx=canvas.getContext('2d');
   if (canvasId==='chart-customer' && chartCustomer) { chartCustomer.destroy(); chartCustomer=null; }
   if (canvasId==='chart-project'  && chartProject)  { chartProject.destroy();  chartProject=null;  }
@@ -2312,7 +2358,7 @@ function renderCategoryChart(es) {
   const canvas=document.getElementById('chart-category'), ctx=canvas.getContext('2d');
   if (chartCategory) { chartCategory.destroy(); chartCategory=null; }
   if (!cats.length) { ctx.clearRect(0,0,canvas.width,canvas.height); document.getElementById('legend-category').innerHTML=''; return; }
-  chartCategory=new Chart(ctx,{type:'doughnut',data:{labels:cats.map(c=>c.label),datasets:[{data:values,backgroundColor:cats.map(c=>c.color),borderWidth:0,hoverOffset:5}]},
+  chartCategory=new Chart(ctx,{type:'doughnut',data:{labels:cats.map(c=>c.label),datasets:[{data:values,backgroundColor:cats.map(c=>resolveColor(c.color)),borderWidth:0,hoverOffset:5}]},
     options:{responsive:true,cutout:'65%',plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>` ${fmtDur(c.raw)}`}}}}});
   document.getElementById('legend-category').innerHTML=cats.map((c,i)=>`
     <div class="legend-item"><span class="legend-dot" style="background:${c.color}"></span><span>${c.label}</span>
@@ -2323,7 +2369,7 @@ function renderTempGrid(es) {
   const map={}, total=es.reduce((a,e)=>a+e.duration,0);
   es.forEach(e=>{ const id=e.category||'Coding'; map[id]=(map[id]||0)+e.duration; });
   const el=document.getElementById('temp-grid');
-  if (!total) { el.innerHTML='<div style="font-size:12px;color:var(--muted2)">No data yet.</div>'; return; }
+  if (!total) { el.innerHTML='<div style="font-size:calc(12px * var(--fs,1));color:var(--muted2)">No data yet.</div>'; return; }
   el.innerHTML=CATEGORIES.filter(c=>map[c.id]).sort((a,b)=>(map[b.id]||0)-(map[a.id]||0)).map(c=>{
     const pct=Math.round((map[c.id]||0)/total*100);
     return `<div class="temp-row"><span class="temp-label">${c.label}</span>
@@ -2342,11 +2388,16 @@ function renderDailyBar(es) {
   }
   const canvas=document.getElementById('chart-daily'), ctx=canvas.getContext('2d');
   if (chartDaily) { chartDaily.destroy(); chartDaily=null; }
+  const light=isLightTheme();
+  const barFill=light?'rgba(74,112,0,.75)':'rgba(232,255,71,.7)';
+  const barEmpty=light?'rgba(0,0,0,.06)':'rgba(255,255,255,.05)';
+  const tick=resolveColor('var(--muted2)'), gridLine=resolveColor('var(--border)');
+  const tickSize=Math.round(10*fontScale());
   chartDaily=new Chart(ctx,{type:'bar',data:{labels,datasets:[{data:values,
-    backgroundColor:values.map(v=>v>0?'rgba(232,255,71,.7)':'rgba(255,255,255,.05)'),borderRadius:4,borderSkipped:false}]},
+    backgroundColor:values.map(v=>v>0?barFill:barEmpty),borderRadius:4,borderSkipped:false}]},
     options:{responsive:true,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>` ${c.raw.toFixed(1)}h`}}},
-    scales:{x:{ticks:{color:'#555',font:{family:'DM Mono',size:10},maxRotation:45},grid:{display:false}},
-            y:{ticks:{color:'#555',font:{family:'DM Mono',size:10},callback:v=>`${v}h`},grid:{color:'#1a1a1a'}}}}});
+    scales:{x:{ticks:{color:tick,font:{family:'Plus Jakarta Sans',size:tickSize},maxRotation:45},grid:{display:false}},
+            y:{ticks:{color:tick,font:{family:'Plus Jakarta Sans',size:tickSize},callback:v=>`${v}h`},grid:{color:gridLine}}}}});
 }
 
 function renderBudgetOverview() {
@@ -2356,10 +2407,10 @@ function renderBudgetOverview() {
     for (const p of (c.projects||[])) {
       if (!p.budgetHours) continue;
       const used=entries.filter(e=>e.projectId===p.id).reduce((a,e)=>a+e.duration,0)/3600;
-      rows.push(`<div style="margin-bottom:12px"><div style="font-size:12px;margin-bottom:2px">${esc(c.name)} › <b>${esc(p.name)}</b></div>${renderBudgetBar(used,p.budgetHours)}</div>`);
+      rows.push(`<div style="margin-bottom:12px"><div style="font-size:calc(12px * var(--fs,1));margin-bottom:2px">${esc(c.name)} › <b>${esc(p.name)}</b></div>${renderBudgetBar(used,p.budgetHours)}</div>`);
     }
   }
-  el.innerHTML=rows.length?rows.join(''):`<div style="font-size:12px;color:var(--muted2);padding:6px 0">No budgets set. Edit a project to add one.</div>`;
+  el.innerHTML=rows.length?rows.join(''):`<div style="font-size:calc(12px * var(--fs,1));color:var(--muted2);padding:6px 0">No budgets set. Edit a project to add one.</div>`;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -2380,7 +2431,7 @@ window.closeModal = closeModal;
 function openAddCustomer() {
   showModal('Add Customer',
     `<div class="form-field"><label>Name</label><input id="m-name" type="text" placeholder="e.g. Acme Ltd" autocorrect="on" autocapitalize="words"></div>
-     <div id="m-error" style="display:none;color:var(--red);font-size:12px;margin-top:8px"></div>`,
+     <div id="m-error" style="display:none;color:var(--red);font-size:calc(12px * var(--fs,1));margin-top:8px"></div>`,
     `<button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
      <button class="btn btn-primary" onclick="doAddCustomer()">Add</button>`);
   setTimeout(()=>document.getElementById('m-name')?.focus(),50);
@@ -2457,7 +2508,7 @@ window.doEditRate = doEditRate;
 let _confirmFn = null;
 function openConfirm(msg, fn) {
   _confirmFn = fn;
-  showModal('Confirm', `<p style="font-size:13px;color:var(--muted2)">${msg}</p>`,
+  showModal('Confirm', `<p style="font-size:calc(13px * var(--fs,1));color:var(--muted2)">${msg}</p>`,
     `<button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
      <button class="btn btn-danger" onclick="window._runConfirm()">Remove</button>`);
 }
@@ -2473,8 +2524,28 @@ function toggleTheme(isLight) {
   const theme = isLight ? 'light' : 'dark';
   document.body.setAttribute('data-theme', theme);
   localStorage.setItem('tt_theme', theme);
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', isLight ? '#f2f2ef' : '#0a0a0a');
+  // Canvas colours are baked in at draw time, so charts need a redraw on switch
+  try { renderCharts(); } catch {}
 }
 window.toggleTheme = toggleTheme;
+
+// ── Text size ────────────────────────────────────────────────────────────────
+const FONT_SCALES = [0.9, 1, 1.15, 1.3];
+function fontScale() { return +localStorage.getItem('tt_font_scale') || 1; }
+function applyFontScale(scale) {
+  document.documentElement.style.setProperty('--fs', scale);
+  document.querySelectorAll('#fs-picker .fs-btn').forEach(b => {
+    b.classList.toggle('active', +b.dataset.scale === scale);
+  });
+}
+function setFontScale(scale) {
+  if (!FONT_SCALES.includes(scale)) return;
+  localStorage.setItem('tt_font_scale', scale);
+  applyFontScale(scale);
+  try { renderCharts(); } catch {}
+}
+window.setFontScale = setFontScale;
 
 function checkUpdates() {
   const el = document.getElementById('update-status-text');
@@ -2502,11 +2573,13 @@ function loadTheme() {
   document.body.setAttribute('data-theme', theme);
   const toggle = document.getElementById('theme-toggle');
   if (toggle) toggle.checked = theme === 'light';
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme === 'light' ? '#f2f2ef' : '#0a0a0a');
+  applyFontScale(fontScale());
 }
 
 function openFirebaseHelp() {
   showModal('Firebase Setup',
-    `<p style="font-size:12px;color:var(--muted2);line-height:1.7">
+    `<p style="font-size:calc(12px * var(--fs,1));color:var(--muted2);line-height:1.7">
     1. Go to <b>console.firebase.google.com</b><br>
     2. Create a project → enable Firestore (test mode)<br>
     3. Project Settings → Your Apps → Web → register app<br>
@@ -2588,10 +2661,10 @@ function renderInvoiceList() {
         <span class="inv-status ${inv.status||'draft'}">${inv.status||'draft'}</span>
       </div>
       <div class="inv-actions">
-        <button class="btn btn-ghost" style="font-size:11px;padding:5px 10px" onclick="previewInvoice('${inv.id}')">View</button>
-        ${inv.status==='draft' ? `<button class="btn btn-ghost" style="font-size:11px;padding:5px 10px" onclick="markInvoice('${inv.id}','sent')">Mark Sent</button>` : ''}
-        ${inv.status==='sent'  ? `<button class="btn btn-primary" style="font-size:11px;padding:5px 10px" onclick="markInvoice('${inv.id}','paid')">Mark Paid</button>` : ''}
-        <button class="btn btn-danger" style="font-size:11px;padding:5px 10px" onclick="deleteInvoice('${inv.id}')">✕</button>
+        <button class="btn btn-ghost" style="font-size:calc(11px * var(--fs,1));padding:5px 10px" onclick="previewInvoice('${inv.id}')">View</button>
+        ${inv.status==='draft' ? `<button class="btn btn-ghost" style="font-size:calc(11px * var(--fs,1));padding:5px 10px" onclick="markInvoice('${inv.id}','sent')">Mark Sent</button>` : ''}
+        ${inv.status==='sent'  ? `<button class="btn btn-primary" style="font-size:calc(11px * var(--fs,1));padding:5px 10px" onclick="markInvoice('${inv.id}','paid')">Mark Paid</button>` : ''}
+        <button class="btn btn-danger" style="font-size:calc(11px * var(--fs,1));padding:5px 10px" onclick="deleteInvoice('${inv.id}')">✕</button>
       </div>
     </div>`).join('');
 }
@@ -2741,15 +2814,15 @@ function previewInvoice(id, invData) {
       <div style="display:flex;justify-content:space-between;margin-bottom:28px">
         <div class="inv-to-block">
           <div class="label">Bill To</div>
-          <div style="font-size:14px;font-weight:600">${esc(inv.customerName)}</div>
+          <div style="font-size:calc(14px * var(--fs,1));font-weight:600">${esc(inv.customerName)}</div>
         </div>
         <div style="text-align:right">
           <div class="label">Invoice Number</div>
-          <div style="font-size:14px;font-weight:600;margin-bottom:8px">${esc(inv.number)}</div>
+          <div style="font-size:calc(14px * var(--fs,1));font-weight:600;margin-bottom:8px">${esc(inv.number)}</div>
           <div class="label">Invoice Date</div>
-          <div style="font-size:13px">${new Date(inv.date).toLocaleDateString()}</div>
+          <div style="font-size:calc(13px * var(--fs,1))">${new Date(inv.date).toLocaleDateString()}</div>
           <div class="label" style="margin-top:6px">Period</div>
-          <div style="font-size:12px">${new Date(inv.dateFrom).toLocaleDateString()} – ${new Date(inv.dateTo).toLocaleDateString()}</div>
+          <div style="font-size:calc(12px * var(--fs,1))">${new Date(inv.dateFrom).toLocaleDateString()} – ${new Date(inv.dateTo).toLocaleDateString()}</div>
         </div>
       </div>
       <table>
@@ -2872,16 +2945,16 @@ boot();
 
 </script>
 
-<div id="auth-overlay" style="display:none;position:fixed;inset:0;background:rgba(10,10,10,.94);z-index:9999;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:24px">
-  <div style="font-size:15px;font-weight:700;color:var(--text)">Sign in</div>
+<div id="auth-overlay" style="display:none;position:fixed;inset:0;background:var(--overlay);z-index:9999;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:24px">
+  <div style="font-size:calc(15px * var(--fs,1));font-weight:700;color:var(--text)">Sign in</div>
   <input id="auth-email" type="email" placeholder="Email" autocomplete="username"
-    style="width:240px;padding:9px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:inherit;font-size:13px;outline:none"
+    style="width:240px;padding:9px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:inherit;font-size:calc(13px * var(--fs,1));outline:none"
     onkeydown="if(event.key==='Enter')document.getElementById('auth-password').focus()">
   <input id="auth-password" type="password" placeholder="Password" autocomplete="current-password"
-    style="width:240px;padding:9px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:inherit;font-size:13px;outline:none"
+    style="width:240px;padding:9px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:inherit;font-size:calc(13px * var(--fs,1));outline:none"
     onkeydown="if(event.key==='Enter')signInWithEmail()">
   <button id="auth-sign-in-btn" class="btn btn-primary" onclick="signInWithEmail()" style="width:240px">Sign in</button>
-  <div id="auth-error" style="font-size:11px;color:var(--red);display:none;max-width:240px;text-align:center"></div>
+  <div id="auth-error" style="font-size:calc(11px * var(--fs,1));color:var(--red);display:none;max-width:240px;text-align:center"></div>
 </div>
 </body>
 </html>
