@@ -170,9 +170,13 @@ main{padding:14px 14px 96px;max-width:900px;margin:0 auto}
 .field select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' fill='none'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23888' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:30px}
 .field input:focus,.field select:focus,.field textarea:focus{border-color:var(--accent)}
 .modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:18px}
-.proj-chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
-.proj-chip{padding:5px 11px;border-radius:20px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:12px;font-family:inherit;cursor:pointer;white-space:nowrap;transition:background .15s,border-color .15s}
+.proj-chips{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin-bottom:12px}
+.proj-chip{display:flex;flex-direction:column;align-items:flex-start;gap:1px;min-width:0;padding:6px 10px;border-radius:12px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-family:inherit;cursor:pointer;text-align:left;overflow:hidden;transition:background .15s,border-color .15s}
+.proj-chip>span{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.proj-chip-cust{font-size:10px;color:var(--text2)}
+.proj-chip-proj{font-size:12px;font-weight:600}
 .proj-chip.active{background:var(--accent);border-color:var(--accent);color:#000}
+.proj-chip.active .proj-chip-cust{color:rgba(0,0,0,.6)}
 .proj-summary{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;font-size:13px}
 .proj-summary-text{font-weight:500}
 .proj-summary-change{font-size:11px;color:var(--text2)}
@@ -945,14 +949,32 @@ window.taskDrop = function(e, status) {
 
 // ── Add / Edit modal ──────────────────────────────────────────────────────────
 // ── Customer+project picker helpers ──────────────────────────────────────────
-function getRecentCombos() {
+const MAX_COMBOS = 6; // quick-select chips shown above the customer/project picker
+function getStoredCombos() {
   try { return JSON.parse(localStorage.getItem('tt_recent_combos') || '[]'); } catch { return []; }
+}
+// Recently used first, then topped up with the most-used pairs across existing tasks
+function getRecentCombos() {
+  const list = getStoredCombos();
+  if (list.length < MAX_COMBOS) {
+    const counts = {};
+    for (const t of tasks) {
+      if (!t.customerId || !t.projectId) continue;
+      const key = `${t.customerId}:${t.projectId}`;
+      counts[key] = (counts[key] || 0) + 1;
+    }
+    for (const key of Object.keys(counts).sort((a, b) => counts[b] - counts[a])) {
+      if (list.length >= MAX_COMBOS) break;
+      if (!list.includes(key)) list.push(key);
+    }
+  }
+  return list.slice(0, MAX_COMBOS);
 }
 function saveRecentCombo(cid, pid) {
   const key = `${cid}:${pid}`;
-  const list = getRecentCombos().filter(k => k !== key);
+  const list = getStoredCombos().filter(k => k !== key);
   list.unshift(key);
-  localStorage.setItem('tt_recent_combos', JSON.stringify(list.slice(0, 3)));
+  localStorage.setItem('tt_recent_combos', JSON.stringify(list.slice(0, MAX_COMBOS)));
   localStorage.setItem('tt_last_cust', cid);
   localStorage.setItem('tt_last_proj', pid);
 }
@@ -978,10 +1000,10 @@ function renderChips(selectedValue) {
     const c = customers.find(x => x.id === cid);
     const p = allProjects.find(x => x.id === pid);
     if (!c || !p) return '';
-    return `<button class="proj-chip${key === selectedValue ? ' active' : ''}" onclick="selectCombo('${key}')">${esc(c.name)} › ${esc(p.name)}</button>`;
+    return `<button class="proj-chip${key === selectedValue ? ' active' : ''}" onclick="selectCombo('${key}')" title="${esc(c.name)} › ${esc(p.name)}"><span class="proj-chip-cust">${esc(c.name)}</span><span class="proj-chip-proj">${esc(p.name)}</span></button>`;
   }).filter(Boolean);
   el.innerHTML = items.join('');
-  el.style.display = items.length ? 'flex' : 'none';
+  el.style.display = items.length ? 'grid' : 'none';
 }
 function collapseToSummary(val) {
   const [cid, pid] = (val || '').split(':');
