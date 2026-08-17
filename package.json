@@ -42,7 +42,6 @@
         }
       ],
       "icon": "build/icon.ico",
-      "publisherName": "Your Name",
       "verifyUpdateCodeSignature": false
     },
     "nsis": {
