@@ -16,13 +16,34 @@
 :root {
   --bg:#0d0d0d; --surface:#161616; --surface2:#1e1e1e; --surface3:#272727;
   --border:#2a2a2a; --accent:#e8ff47; --brand:#f5a32a; --red:#ff4757;
-  --text:#f0f0f0; --text2:#888; --muted:#444; --green:#47ff8a; --blue:#47c8ff;
+  --text:#f0f0f0; --text2:#a0a0a0; --muted:#838383; --green:#47ff8a; --blue:#47c8ff;
   --radius:10px; --radius-sm:7px; --shadow:0 4px 20px rgba(0,0,0,.5);
+  --on-accent:#000;              /* text sitting on an accent fill */
+  --red-fill:#d93646;            /* red used as a background behind white text */
+  --warn:#ffaa00;
+  /* Status palette — re-tuned per theme so badges stay readable */
+  --p-green:#47ff8a; --p-blue:#47c8ff; --p-amber:#ffaa00; --p-orange:#ff9800;
+  --p-red:#ff4757; --p-indigo:#7c8cf8; --p-gold:#f5a32a; --p-teal:#4caf91;
+  --p-grey:#a0a0a0; --p-grey-dim:#8a8a8a;
+  --fs:1;                        /* global font scale, set from Settings */
+  --overlay:rgba(13,13,13,.95);
 }
+/* Light theme. Every colour that carries text is checked against --surface and
+   --surface2 for at least 4.5:1 — the dark theme's neons and pale greys are
+   invisible on white, so each one gets a darker counterpart here. */
 [data-theme="light"] {
   --bg:#f3f4f6; --surface:#fff; --surface2:#f8f9fa; --surface3:#eef0f2;
-  --border:#e4e6e9; --text:#111827; --text2:#6b7280; --muted:#9ca3af;
+  --border:#dcdfe4; --text:#111827; --text2:#4b5563; --muted:#656b76;
+  --accent:#4a7000; --brand:#9a5b00; --red:#c2182b;
+  --green:#0f7a3d; --blue:#0b6ea8;
   --shadow:0 4px 20px rgba(0,0,0,.08);
+  --on-accent:#fff;
+  --red-fill:#c2182b;
+  --warn:#8a5300;
+  --p-green:#0f7a3d; --p-blue:#0b6ea8; --p-amber:#8a5300; --p-orange:#8a4b00;
+  --p-red:#c2182b; --p-indigo:#4550c9; --p-gold:#8a5a00; --p-teal:#0f7a5e;
+  --p-grey:#5c5c5c; --p-grey-dim:#6e6e6e;
+  --overlay:rgba(243,244,246,.96);
 }
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 html{-webkit-text-size-adjust:100%;overflow-x:hidden}
@@ -32,26 +53,26 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
 header{display:flex;align-items:center;justify-content:space-between;padding:0 16px;height:58px;background:var(--surface);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:20}
 .logo-wrap{display:flex;align-items:center;gap:10px}
 .logo-icon{width:36px;height:36px;flex-shrink:0}
-.logo-name{font-size:14px;font-weight:800;letter-spacing:-.3px;line-height:1.2}
+.logo-name{font-size:calc(14px * var(--fs,1));font-weight:800;letter-spacing:-.3px;line-height:1.2}
 .logo-name .orange{color:var(--brand)}
-.logo-sub{font-size:10px;color:var(--text2);font-weight:500;letter-spacing:.06em;text-transform:uppercase}
+.logo-sub{font-size:calc(10px * var(--fs,1));color:var(--text2);font-weight:500;letter-spacing:.06em;text-transform:uppercase}
 .hdr-right{display:flex;align-items:center;gap:8px}
-.status-pill{display:flex;align-items:center;gap:5px;padding:5px 10px;border-radius:20px;background:var(--surface2);border:1px solid var(--border);font-size:11px;color:var(--text2);font-weight:500}
+.status-pill{display:flex;align-items:center;gap:5px;padding:5px 10px;border-radius:20px;background:var(--surface2);border:1px solid var(--border);font-size:calc(11px * var(--fs,1));color:var(--text2);font-weight:500}
 .status-dot{width:6px;height:6px;border-radius:50%;background:var(--muted);transition:all .3s}
 .status-dot.on{background:var(--green);box-shadow:0 0 6px var(--green)}
 .status-dot.err{background:var(--red);box-shadow:0 0 6px var(--red)}
-.icon-btn{width:36px;height:36px;border-radius:9px;border:1px solid var(--border);background:var(--surface2);color:var(--text2);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:17px;transition:all .15s;flex-shrink:0}
+.icon-btn{width:36px;height:36px;border-radius:9px;border:1px solid var(--border);background:var(--surface2);color:var(--text2);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:calc(17px * var(--fs,1));transition:all .15s;flex-shrink:0}
 .icon-btn:hover{background:var(--surface3);color:var(--text)}
 .icon-btn:active{transform:scale(.92)}
-.icon-btn.paused{color:#ff9800;border-color:#ff980055;background:rgba(255,152,0,.12)}
+.icon-btn.paused{color:var(--warn);border-color:color-mix(in srgb, var(--warn) 40%, transparent);background:color-mix(in srgb, var(--warn) 12%, transparent)}
 .notif-wrap{position:relative}
 .notif-menu{position:absolute;top:calc(100% + 8px);right:0;min-width:190px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:6px;box-shadow:0 8px 28px rgba(0,0,0,.4);z-index:60;display:none}
 .notif-menu.open{display:block}
-.notif-menu-item{display:block;width:100%;text-align:left;padding:10px 12px;border:none;background:transparent;color:var(--text);font-family:'Plus Jakarta Sans',sans-serif;font-size:13px;border-radius:8px;cursor:pointer}
+.notif-menu-item{display:block;width:100%;text-align:left;padding:10px 12px;border:none;background:transparent;color:var(--text);font-family:'Plus Jakarta Sans',sans-serif;font-size:calc(13px * var(--fs,1));border-radius:8px;cursor:pointer}
 .notif-menu-item:hover{background:var(--surface2)}
-.notif-menu-item.resume{color:#4caf91}
+.notif-menu-item.resume{color:var(--p-teal)}
 .notif-menu-sep{height:1px;background:var(--border);margin:5px 4px}
-.notif-menu-title{padding:6px 12px 8px;font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--text2);font-weight:700}
+.notif-menu-title{padding:6px 12px 8px;font-size:calc(10px * var(--fs,1));text-transform:uppercase;letter-spacing:.08em;color:var(--text2);font-weight:700}
 
 /* ── Main ── */
 main{padding:14px 14px 96px;max-width:900px;margin:0 auto}
@@ -61,28 +82,28 @@ main{padding:14px 14px 96px;max-width:900px;margin:0 auto}
 .setup-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:28px;width:100%;max-width:440px;box-shadow:var(--shadow)}
 .setup-logo{display:flex;align-items:center;gap:10px;margin-bottom:22px}
 .setup-logo .logo-icon{width:44px;height:44px}
-.setup-logo .logo-name{font-size:16px}
-.setup-card h2{font-size:15px;font-weight:700;margin-bottom:6px}
-.setup-card p{font-size:12px;color:var(--text2);line-height:1.7;margin-bottom:20px}
-.cfg-area{width:100%;padding:10px 12px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-family:'Plus Jakarta Sans',sans-serif;font-size:11px;outline:none;resize:vertical;line-height:1.5;transition:border-color .15s;min-height:120px}
+.setup-logo .logo-name{font-size:calc(16px * var(--fs,1))}
+.setup-card h2{font-size:calc(15px * var(--fs,1));font-weight:700;margin-bottom:6px}
+.setup-card p{font-size:calc(12px * var(--fs,1));color:var(--text2);line-height:1.7;margin-bottom:20px}
+.cfg-area{width:100%;padding:10px 12px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-family:'Plus Jakarta Sans',sans-serif;font-size:calc(11px * var(--fs,1));outline:none;resize:vertical;line-height:1.5;transition:border-color .15s;min-height:120px}
 .cfg-area:focus{border-color:var(--accent)}
-.error-msg{font-size:11px;color:var(--red);margin-top:8px;display:none;line-height:1.5}
+.error-msg{font-size:calc(11px * var(--fs,1));color:var(--red);margin-top:8px;display:none;line-height:1.5}
 
 /* ── Buttons ── */
-.btn{display:inline-flex;align-items:center;gap:6px;padding:9px 18px;border-radius:var(--radius-sm);border:1px solid var(--border);font-family:'Plus Jakarta Sans',sans-serif;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;white-space:nowrap}
-.btn-primary{background:var(--accent);color:#000;border-color:var(--accent)}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:9px 18px;border-radius:var(--radius-sm);border:1px solid var(--border);font-family:'Plus Jakarta Sans',sans-serif;font-size:calc(12px * var(--fs,1));font-weight:600;cursor:pointer;transition:all .15s;white-space:nowrap}
+.btn-primary{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
 .btn-primary:hover{opacity:.88}
 .btn-primary:active{transform:scale(.97)}
 .btn-ghost{background:transparent;color:var(--text2)}
 .btn-ghost:hover{color:var(--text);background:var(--surface2)}
-.btn-sm{padding:6px 12px;font-size:11px}
+.btn-sm{padding:6px 12px;font-size:calc(11px * var(--fs,1))}
 
 /* ── Sync banner ── */
-.sync-banner{background:rgba(255,71,87,.08);border:1px solid rgba(255,71,87,.25);border-radius:var(--radius-sm);padding:10px 14px;font-size:11px;color:var(--red);margin-bottom:14px;display:none;line-height:1.5}
+.sync-banner{background:rgba(255,71,87,.08);border:1px solid rgba(255,71,87,.25);border-radius:var(--radius-sm);padding:10px 14px;font-size:calc(11px * var(--fs,1));color:var(--red);margin-bottom:14px;display:none;line-height:1.5}
 
 /* ── Toolbar ── */
 .toolbar{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap}
-.toolbar select{flex:1;min-width:0;padding:8px 10px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-family:'Plus Jakarta Sans',sans-serif;font-size:12px;outline:none;-webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' fill='none'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23888' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;padding-right:28px}
+.toolbar select{flex:1;min-width:0;padding:8px 10px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-family:'Plus Jakarta Sans',sans-serif;font-size:calc(12px * var(--fs,1));outline:none;-webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' fill='none'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23888' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;padding-right:28px}
 .toolbar select:focus{border-color:var(--accent)}
 
 /* ── Columns ── */
@@ -93,9 +114,9 @@ main{padding:14px 14px 96px;max-width:900px;margin:0 auto}
 .col.drag-over{background:rgba(71,200,255,.06);box-shadow:inset 0 0 0 2px rgba(71,200,255,.4)}
 .card[draggable="true"]{cursor:grab}
 .card-dragging{opacity:.4;cursor:grabbing}
-.col-hdr{padding:8px 12px;border-radius:var(--radius-sm);background:var(--surface);border:1px solid var(--border);font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--text2);font-weight:700;display:flex;align-items:center;gap:7px;position:sticky;top:58px;z-index:5}
+.col-hdr{padding:8px 12px;border-radius:var(--radius-sm);background:var(--surface);border:1px solid var(--border);font-size:calc(10px * var(--fs,1));text-transform:uppercase;letter-spacing:.1em;color:var(--text2);font-weight:700;display:flex;align-items:center;gap:7px;position:sticky;top:58px;z-index:5}
 .col-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
-.col-count{margin-left:auto;padding:1px 7px;border-radius:10px;background:var(--surface2);border:1px solid var(--border);font-size:10px;color:var(--text2)}
+.col-count{margin-left:auto;padding:1px 7px;border-radius:10px;background:var(--surface2);border:1px solid var(--border);font-size:calc(10px * var(--fs,1));color:var(--text2)}
 
 /* ── Task card ── */
 .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;transition:border-color .15s,transform .12s,box-shadow .15s;position:relative;overflow:hidden;cursor:default;touch-action:pan-y}
@@ -107,40 +128,40 @@ main{padding:14px 14px 96px;max-width:900px;margin:0 auto}
 .card:hover{border-color:var(--surface3);transform:translateY(-1px);box-shadow:var(--shadow)}
 .card:active{transform:translateY(0);box-shadow:none}
 .card.dragging{opacity:.2;transform:none!important;box-shadow:none!important}
-.card-title{font-size:12px;font-weight:500;line-height:1.5;margin-bottom:4px;padding-left:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.card-title{font-size:calc(12px * var(--fs,1));font-weight:500;line-height:1.5;margin-bottom:4px;padding-left:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
 .card-title.done{opacity:.38;text-decoration:line-through}
-.card-meta{font-size:10px;color:var(--text2);margin-bottom:10px;padding-left:9px}
+.card-meta{font-size:calc(10px * var(--fs,1));color:var(--text2);margin-bottom:10px;padding-left:9px}
 .card-actions{display:flex;gap:5px;padding-left:9px;flex-wrap:wrap}
-.card-btn{padding:4px 10px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--text2);font-family:'Plus Jakarta Sans',sans-serif;font-size:10px;font-weight:500;cursor:pointer;transition:all .12s}
+.card-btn{padding:4px 10px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--text2);font-family:'Plus Jakarta Sans',sans-serif;font-size:calc(10px * var(--fs,1));font-weight:500;cursor:pointer;transition:all .12s}
 .card-btn:hover{color:var(--text);border-color:var(--surface3);background:var(--surface2)}
 .card-btn:active{transform:scale(.94)}
-.card-btn.advance{color:var(--accent);border-color:rgba(232,255,71,.3)}
-.card-btn.advance:hover{background:var(--accent);color:#000;border-color:var(--accent)}
+.card-btn.advance{color:var(--accent);border-color:color-mix(in srgb, var(--accent) 30%, transparent)}
+.card-btn.advance:hover{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
 .card-btn.del{margin-left:auto}
 .card-btn.del:hover{color:var(--red);border-color:rgba(255,71,87,.35)}
-.card-status-select{padding:4px 6px;border-radius:4px;border:1px solid var(--border);background:var(--surface2);font-family:'Plus Jakarta Sans',sans-serif;font-size:10px;font-weight:600;cursor:pointer;outline:none;-webkit-appearance:none;appearance:none;text-align:center}
+.card-status-select{padding:4px 6px;border-radius:4px;border:1px solid var(--border);background:var(--surface2);font-family:'Plus Jakarta Sans',sans-serif;font-size:calc(10px * var(--fs,1));font-weight:600;cursor:pointer;outline:none;-webkit-appearance:none;appearance:none;text-align:center}
 .card-status-select:active{transform:scale(.94)}
 
 /* ── Drag ghost ── */
 .drag-ghost{position:fixed;pointer-events:none;z-index:1000;transform:rotate(2deg) scale(1.04);box-shadow:0 10px 35px rgba(0,0,0,.6);border-radius:var(--radius);opacity:.92;transition:none}
 .col.drop-zone{transition:all .15s}
-.col.drag-over{outline:2px dashed rgba(232,255,71,.45);outline-offset:3px;border-radius:var(--radius);background:rgba(232,255,71,.04)}
+.col.drag-over{outline:2px dashed color-mix(in srgb, var(--accent) 45%, transparent);outline-offset:3px;border-radius:var(--radius);background:color-mix(in srgb, var(--accent) 6%, transparent)}
 
 /* ── Add task shortcut ── */
-.add-task-btn{padding:10px;border:1px dashed var(--border);border-radius:var(--radius);background:transparent;color:var(--muted);font-size:11px;font-family:'Plus Jakarta Sans',sans-serif;cursor:pointer;text-align:center;transition:all .15s;width:100%}
+.add-task-btn{padding:10px;border:1px dashed var(--border);border-radius:var(--radius);background:transparent;color:var(--muted);font-size:calc(11px * var(--fs,1));font-family:'Plus Jakarta Sans',sans-serif;cursor:pointer;text-align:center;transition:all .15s;width:100%}
 .add-task-btn:hover{border-color:var(--surface3);color:var(--text2);background:var(--surface)}
 
 /* ── Empty state ── */
-.empty{text-align:center;padding:28px 12px;color:var(--muted);font-size:11px;line-height:1.6}
-.empty-icon{font-size:26px;margin-bottom:6px}
+.empty{text-align:center;padding:28px 12px;color:var(--muted);font-size:calc(11px * var(--fs,1));line-height:1.6}
+.empty-icon{font-size:calc(26px * var(--fs,1));margin-bottom:6px}
 
 /* ── FAB ── */
-.fab{position:fixed;bottom:26px;right:20px;z-index:30;width:54px;height:54px;border-radius:50%;background:var(--accent);color:#000;font-size:26px;line-height:1;border:none;cursor:pointer;box-shadow:0 4px 18px rgba(232,255,71,.4);display:flex;align-items:center;justify-content:center;transition:all .18s;font-family:system-ui}
-.fab:hover{transform:scale(1.06);box-shadow:0 6px 24px rgba(232,255,71,.5)}
+.fab{position:fixed;bottom:26px;right:20px;z-index:30;width:54px;height:54px;border-radius:50%;background:var(--accent);color:var(--on-accent);font-size:calc(26px * var(--fs,1));line-height:1;border:none;cursor:pointer;box-shadow:0 4px 18px color-mix(in srgb, var(--accent) 40%, transparent);display:flex;align-items:center;justify-content:center;transition:all .18s;font-family:system-ui}
+.fab:hover{transform:scale(1.06);box-shadow:0 6px 24px color-mix(in srgb, var(--accent) 50%, transparent)}
 .fab:active{transform:scale(.94)}
 
 /* ── Pull to refresh ── */
-#ptr{position:fixed;top:0;left:0;right:0;height:52px;display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--text2);background:var(--surface);border-bottom:1px solid var(--border);transform:translateY(-52px);transition:transform .25s ease;z-index:50}
+#ptr{position:fixed;top:0;left:0;right:0;height:52px;display:flex;align-items:center;justify-content:center;font-size:calc(12px * var(--fs,1));color:var(--text2);background:var(--surface);border-bottom:1px solid var(--border);transform:translateY(-52px);transition:transform .25s ease;z-index:50}
 #ptr.visible{transform:translateY(0)}
 #ptr.spinning span{display:inline-block;animation:spin .65s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
@@ -156,16 +177,16 @@ main{padding:14px 14px 96px;max-width:900px;margin:0 auto}
 .modal-handle{width:36px;height:4px;background:var(--border);border-radius:2px;margin:8px auto 16px}
 @media(min-width:480px){.modal-handle{display:none}}
 .modal-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
-.modal-hdr h3{font-size:15px;font-weight:700}
-.modal h3{font-size:15px;font-weight:700;margin-bottom:16px}
+.modal-hdr h3{font-size:calc(15px * var(--fs,1));font-weight:700}
+.modal h3{font-size:calc(15px * var(--fs,1));font-weight:700;margin-bottom:16px}
 .field{margin-bottom:13px}
-.field label{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--text2);margin-bottom:5px;font-weight:600}
-.field input,.field select,.field textarea{width:100%;padding:9px 12px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-family:'Plus Jakarta Sans',sans-serif;font-size:13px;outline:none;transition:border-color .15s;-webkit-appearance:none;appearance:none}
+.field label{display:block;font-size:calc(10px * var(--fs,1));text-transform:uppercase;letter-spacing:.1em;color:var(--text2);margin-bottom:5px;font-weight:600}
+.field input,.field select,.field textarea{width:100%;padding:9px 12px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-family:'Plus Jakarta Sans',sans-serif;font-size:calc(13px * var(--fs,1));outline:none;transition:border-color .15s;-webkit-appearance:none;appearance:none}
 /* Touch devices: keep font ≥ 16px so the OS never triggers zoom-on-focus.
    Zoom suppresses the autocorrect/suggestion bar. @supports(-webkit-touch-callout)
    was unreliable on newer iOS and Chrome for iOS; pointer:coarse covers all touch devices. */
 @media(hover:none) and (pointer:coarse){
-  input,textarea{font-size:16px !important}
+  input,textarea{font-size:calc(16px * var(--fs,1)) !important}
 }
 .field select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' fill='none'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23888' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:30px}
 .field input:focus,.field select:focus,.field textarea:focus{border-color:var(--accent)}
@@ -173,27 +194,27 @@ main{padding:14px 14px 96px;max-width:900px;margin:0 auto}
 .proj-chips{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin-bottom:12px}
 .proj-chip{display:flex;flex-direction:column;align-items:flex-start;gap:1px;min-width:0;padding:6px 10px;border-radius:12px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-family:inherit;cursor:pointer;text-align:left;overflow:hidden;transition:background .15s,border-color .15s}
 .proj-chip>span{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.proj-chip-cust{font-size:10px;color:var(--text2)}
-.proj-chip-proj{font-size:12px;font-weight:600}
-.proj-chip.active{background:var(--accent);border-color:var(--accent);color:#000}
-.proj-chip.active .proj-chip-cust{color:rgba(0,0,0,.6)}
-.proj-summary{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;font-size:13px}
+.proj-chip-cust{font-size:calc(10px * var(--fs,1));color:var(--text2)}
+.proj-chip-proj{font-size:calc(12px * var(--fs,1));font-weight:600}
+.proj-chip.active{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.proj-chip.active .proj-chip-cust{color:color-mix(in srgb, var(--on-accent) 75%, transparent)}
+.proj-summary{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;font-size:calc(13px * var(--fs,1))}
 .proj-summary-text{font-weight:500}
-.proj-summary-change{font-size:11px;color:var(--text2)}
+.proj-summary-change{font-size:calc(11px * var(--fs,1));color:var(--text2)}
 
 /* ── Manage panel ── */
-.manage-section-title{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);font-weight:700;margin:14px 0 8px;padding-top:14px;border-top:1px solid var(--border)}
+.manage-section-title{font-size:calc(10px * var(--fs,1));text-transform:uppercase;letter-spacing:.1em;color:var(--muted);font-weight:700;margin:14px 0 8px;padding-top:14px;border-top:1px solid var(--border)}
 .manage-section-title:first-child{margin-top:0;padding-top:0;border-top:none}
 .manage-cust{margin-bottom:12px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm)}
 .manage-cust-hdr{padding:10px 12px;display:flex;align-items:center;gap:8px}
-.manage-cust-name{font-size:12px;font-weight:700;flex:1}
+.manage-cust-name{font-size:calc(12px * var(--fs,1));font-weight:700;flex:1}
 .manage-projects{padding:0 12px 8px}
 .manage-proj{display:flex;align-items:center;gap:6px;padding:6px 0;border-top:1px solid var(--border)}
-.manage-proj-name{font-size:11px;color:var(--text2);flex:1}
+.manage-proj-name{font-size:calc(11px * var(--fs,1));color:var(--text2);flex:1}
 .manage-add-proj{display:flex;gap:6px;padding:8px 0 2px;border-top:1px solid var(--border)}
-.manage-add-proj input{flex:1;padding:7px 10px;font-size:12px}
+.manage-add-proj input{flex:1;padding:7px 10px;font-size:calc(12px * var(--fs,1))}
 .add-cust-row{display:flex;gap:8px;margin-top:8px;padding-top:14px;border-top:1px solid var(--border)}
-.add-cust-row input{flex:1;padding:9px 12px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-family:'Plus Jakarta Sans',sans-serif;font-size:13px;outline:none;transition:border-color .15s}
+.add-cust-row input{flex:1;padding:9px 12px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-family:'Plus Jakarta Sans',sans-serif;font-size:calc(13px * var(--fs,1));outline:none;transition:border-color .15s}
 .add-cust-row input:focus{border-color:var(--accent)}
 
 /* ── Settings drawer ── */
@@ -202,31 +223,35 @@ main{padding:14px 14px 96px;max-width:900px;margin:0 auto}
 .drawer{position:fixed;top:0;right:0;bottom:0;width:290px;max-width:82vw;background:var(--surface);border-left:1px solid var(--border);z-index:201;transform:translateX(100%);transition:transform .28s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column}
 .drawer.open{transform:translateX(0)}
 .drawer-hdr{display:flex;align-items:center;justify-content:space-between;padding:18px 18px 14px;border-bottom:1px solid var(--border);flex-shrink:0}
-.drawer-hdr h2{font-size:14px;font-weight:700}
-.drawer-close-btn{width:28px;height:28px;border-radius:6px;background:var(--surface2);border:1px solid var(--border);color:var(--text2);cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;transition:all .12s}
+.drawer-hdr h2{font-size:calc(14px * var(--fs,1));font-weight:700}
+.drawer-close-btn{width:28px;height:28px;border-radius:6px;background:var(--surface2);border:1px solid var(--border);color:var(--text2);cursor:pointer;font-size:calc(14px * var(--fs,1));display:flex;align-items:center;justify-content:center;transition:all .12s}
 .drawer-close-btn:hover{background:var(--surface3);color:var(--text)}
 .drawer-body{padding:18px;flex:1;overflow-y:auto}
-.drawer-footer{padding:14px 18px;border-top:1px solid var(--border);font-size:10px;color:var(--muted);flex-shrink:0;line-height:1.6}
-.section-title{font-size:9px;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);font-weight:700;margin-bottom:10px;margin-top:18px}
+.drawer-footer{padding:14px 18px;border-top:1px solid var(--border);font-size:calc(10px * var(--fs,1));color:var(--muted);flex-shrink:0;line-height:1.6}
+.section-title{font-size:calc(9px * var(--fs,1));text-transform:uppercase;letter-spacing:.12em;color:var(--muted);font-weight:700;margin-bottom:10px;margin-top:18px}
 .section-title:first-child{margin-top:0}
 .setting-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)}
 .setting-row:last-child{border-bottom:none}
-.setting-label{font-size:12px;font-weight:500}
-.setting-sub{font-size:10px;color:var(--text2);margin-top:2px}
+.setting-label{font-size:calc(12px * var(--fs,1));font-weight:500}
+.setting-sub{font-size:calc(10px * var(--fs,1));color:var(--text2);margin-top:2px}
 .toggle{position:relative;width:44px;height:25px;flex-shrink:0}
 .toggle input{opacity:0;width:0;height:0}
 .toggle-track{position:absolute;inset:0;border-radius:13px;background:var(--surface3);cursor:pointer;transition:background .2s;border:1px solid var(--border)}
 .toggle input:checked+.toggle-track{background:var(--accent);border-color:var(--accent)}
 .toggle-track::after{content:'';position:absolute;width:19px;height:19px;border-radius:50%;background:var(--text2);top:2px;left:2px;transition:transform .2s}
-.toggle input:checked+.toggle-track::after{transform:translateX(19px);background:#000}
-.drawer-action-btn{width:100%;padding:10px 14px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface2);color:var(--text);font-family:'Plus Jakarta Sans',sans-serif;font-size:12px;font-weight:600;cursor:pointer;text-align:left;transition:all .15s;display:flex;align-items:center;gap:9px;margin-bottom:8px}
+.toggle input:checked+.toggle-track::after{transform:translateX(19px);background:var(--on-accent)}
+.drawer-action-btn{width:100%;padding:10px 14px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface2);color:var(--text);font-family:'Plus Jakarta Sans',sans-serif;font-size:calc(12px * var(--fs,1));font-weight:600;cursor:pointer;text-align:left;transition:all .15s;display:flex;align-items:center;gap:9px;margin-bottom:8px}
 .drawer-action-btn:hover{background:var(--surface3)}
 .drawer-action-btn:active{transform:scale(.98)}
-.drawer-action-btn .btn-icon{font-size:15px}
+.drawer-action-btn .btn-icon{font-size:calc(15px * var(--fs,1))}
+.fs-picker{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;margin-top:10px}
+.fs-btn{padding:7px 4px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface2);color:var(--text2);font-family:'Plus Jakarta Sans',sans-serif;font-size:calc(11px * var(--fs,1));font-weight:600;cursor:pointer;transition:all .15s;line-height:1.2}
+.fs-btn:active{transform:scale(.96)}
+.fs-btn.active{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
 
 /* ── Quick-action bar (visible below toolbar) ── */
 .quick-bar{display:flex;gap:8px;margin-bottom:14px}
-.quick-btn{display:flex;align-items:center;justify-content:center;gap:6px;padding:8px 12px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);font-family:'Plus Jakarta Sans',sans-serif;font-size:11px;font-weight:600;color:var(--text2);cursor:pointer;transition:all .15s;white-space:nowrap}
+.quick-btn{display:flex;align-items:center;justify-content:center;gap:6px;padding:8px 12px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);font-family:'Plus Jakarta Sans',sans-serif;font-size:calc(11px * var(--fs,1));font-weight:600;color:var(--text2);cursor:pointer;transition:all .15s;white-space:nowrap}
 .quick-btn:hover{background:var(--surface2);color:var(--text);border-color:var(--brand)}
 .quick-btn:active{transform:scale(.96)}
 .quick-btn-manage{flex:1}
@@ -255,6 +280,18 @@ main{padding:14px 14px 96px;max-width:900px;margin:0 auto}
         <span class="toggle-track"></span>
       </label>
     </div>
+    <div class="setting-row" style="display:block">
+      <div>
+        <div class="setting-label">Text size</div>
+        <div class="setting-sub">Scales every label and button in the app</div>
+      </div>
+      <div class="fs-picker" id="fs-picker">
+        <button class="fs-btn" data-scale="0.9"  onclick="setFontScale(0.9)">Small</button>
+        <button class="fs-btn" data-scale="1"    onclick="setFontScale(1)">Default</button>
+        <button class="fs-btn" data-scale="1.15" onclick="setFontScale(1.15)">Large</button>
+        <button class="fs-btn" data-scale="1.3"  onclick="setFontScale(1.3)">Larger</button>
+      </div>
+    </div>
 
     <div class="section-title">Data</div>
     <button class="drawer-action-btn" onclick="openManagePanel()">
@@ -273,7 +310,7 @@ main{padding:14px 14px 96px;max-width:900px;margin:0 auto}
     </button>
 
     <div class="section-title">Account</div>
-    <div style="font-size:11px;color:var(--text2);padding:4px 0 8px" id="auth-user-email">—</div>
+    <div style="font-size:calc(11px * var(--fs,1));color:var(--text2);padding:4px 0 8px" id="auth-user-email">—</div>
     <button class="drawer-action-btn" onclick="signOutUser()">
       <span class="btn-icon">🔓</span> Sign out
     </button>
@@ -392,16 +429,16 @@ main{padding:14px 14px 96px;max-width:900px;margin:0 auto}
 <!-- FAB -->
 <button class="fab" id="fab" onclick="openAddModal()" style="display:none" title="Add task">+</button>
 
-<div id="auth-overlay" style="display:none;position:fixed;inset:0;background:rgba(13,13,13,.95);z-index:9999;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:24px">
-  <div style="font-size:15px;font-weight:700;color:var(--text)">Sign in</div>
+<div id="auth-overlay" style="display:none;position:fixed;inset:0;background:var(--overlay);z-index:9999;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:24px">
+  <div style="font-size:calc(15px * var(--fs,1));font-weight:700;color:var(--text)">Sign in</div>
   <input id="auth-email" type="email" placeholder="Email" autocomplete="username"
-    style="width:240px;padding:9px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:inherit;font-size:13px;outline:none"
+    style="width:240px;padding:9px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:inherit;font-size:calc(13px * var(--fs,1));outline:none"
     onkeydown="if(event.key==='Enter')document.getElementById('auth-password').focus()">
   <input id="auth-password" type="password" placeholder="Password" autocomplete="current-password"
-    style="width:240px;padding:9px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:inherit;font-size:13px;outline:none"
+    style="width:240px;padding:9px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:inherit;font-size:calc(13px * var(--fs,1));outline:none"
     onkeydown="if(event.key==='Enter')signInEmail()">
   <button id="auth-sign-in-btn" class="btn btn-primary" onclick="signInEmail()" style="width:240px">Sign in</button>
-  <div id="auth-error" style="font-size:11px;color:var(--red);display:none;max-width:240px;text-align:center"></div>
+  <div id="auth-error" style="font-size:calc(11px * var(--fs,1));color:var(--red);display:none;max-width:240px;text-align:center"></div>
 </div>
 
 <!-- Add / Edit task modal -->
@@ -429,7 +466,7 @@ main{padding:14px 14px 96px;max-width:900px;margin:0 auto}
     </div>
     <div class="field">
       <label>Priority</label>
-      <select id="m-prio" style="width:100%;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:13px;outline:none">
+      <select id="m-prio" style="width:100%;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:calc(13px * var(--fs,1));outline:none">
         <option value="low">Low</option>
         <option value="normal" selected>Normal</option>
         <option value="high">High</option>
@@ -438,7 +475,7 @@ main{padding:14px 14px 96px;max-width:900px;margin:0 auto}
     </div>
     <div class="field">
       <label>Repeat</label>
-      <select id="m-recur" style="width:100%;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:13px;outline:none">
+      <select id="m-recur" style="width:100%;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:calc(13px * var(--fs,1));outline:none">
         <option value="">Doesn't repeat</option>
         <option value="weekly">Weekly</option>
         <option value="monthly">Monthly</option>
@@ -448,7 +485,7 @@ main{padding:14px 14px 96px;max-width:900px;margin:0 auto}
       <label>Note <span style="color:var(--text2);font-weight:400">(why this status, context…)</span></label>
       <textarea id="m-notes" rows="3" placeholder="e.g. Waiting on client sign-off"
                 autocorrect="on" autocapitalize="sentences"
-                style="width:100%;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:13px;outline:none;resize:vertical;font-family:inherit"></textarea>
+                style="width:100%;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:calc(13px * var(--fs,1));outline:none;resize:vertical;font-family:inherit"></textarea>
     </div>
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
@@ -466,7 +503,7 @@ main{padding:14px 14px 96px;max-width:900px;margin:0 auto}
       <label>Note <span style="color:var(--text2);font-weight:400">(why this status, context…)</span></label>
       <textarea id="m-note-only" rows="5" placeholder="e.g. Waiting on client sign-off"
                 autocorrect="on" autocapitalize="sentences"
-                style="width:100%;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:13px;outline:none;resize:vertical;font-family:inherit"></textarea>
+                style="width:100%;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:calc(13px * var(--fs,1));outline:none;resize:vertical;font-family:inherit"></textarea>
     </div>
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeNoteModal()">Cancel</button>
@@ -481,7 +518,7 @@ main{padding:14px 14px 96px;max-width:900px;margin:0 auto}
     <div class="modal-handle"></div>
     <div class="modal-hdr">
       <h3>Customers &amp; Projects</h3>
-      <button class="icon-btn" style="width:28px;height:28px;font-size:13px" onclick="closeManage()">✕</button>
+      <button class="icon-btn" style="width:28px;height:28px;font-size:calc(13px * var(--fs,1))" onclick="closeManage()">✕</button>
     </div>
     <div id="manage-list"></div>
     <!-- Add customer -->
@@ -502,7 +539,7 @@ main{padding:14px 14px 96px;max-width:900px;margin:0 auto}
       <h3>💡 Ideas</h3>
       <div style="display:flex;align-items:center;gap:8px">
         <button class="btn btn-primary btn-sm" onclick="openAddIdeaForm()">+ New Idea</button>
-        <button class="icon-btn" style="width:28px;height:28px;font-size:13px" onclick="closeIdeasPanel()">✕</button>
+        <button class="icon-btn" style="width:28px;height:28px;font-size:calc(13px * var(--fs,1))" onclick="closeIdeasPanel()">✕</button>
       </div>
     </div>
     <div id="ideas-list" style="flex:1;overflow-y:auto;padding:0 18px 18px"></div>
@@ -523,11 +560,11 @@ main{padding:14px 14px 96px;max-width:900px;margin:0 auto}
       <label>Notes (optional)</label>
       <textarea id="m-idea-notes" rows="3" placeholder="Describe the idea…"
         autocorrect="on" autocapitalize="sentences"
-        style="width:100%;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-family:'Plus Jakarta Sans',sans-serif;font-size:13px;outline:none;resize:vertical"></textarea>
+        style="width:100%;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-family:'Plus Jakarta Sans',sans-serif;font-size:calc(13px * var(--fs,1));outline:none;resize:vertical"></textarea>
     </div>
     <div class="field">
       <label>Status</label>
-      <select id="m-idea-status" style="width:100%;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:13px;outline:none">
+      <select id="m-idea-status" style="width:100%;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:calc(13px * var(--fs,1));outline:none">
         <option value="idea">Idea</option>
         <option value="exploring">Exploring</option>
         <option value="building">Building</option>
@@ -547,7 +584,7 @@ main{padding:14px 14px 96px;max-width:900px;margin:0 auto}
     <div class="modal-handle"></div>
     <div class="modal-hdr">
       <h3>📋 Opportunities</h3>
-      <button class="icon-btn" style="width:28px;height:28px;font-size:13px" onclick="closeProposalsPanel()">✕</button>
+      <button class="icon-btn" style="width:28px;height:28px;font-size:calc(13px * var(--fs,1))" onclick="closeProposalsPanel()">✕</button>
     </div>
     <div id="proposals-list" style="flex:1;overflow-y:auto;padding:0 18px"></div>
     <div style="padding:14px 18px;border-top:1px solid var(--border);flex-shrink:0">
@@ -568,7 +605,7 @@ main{padding:14px 14px 96px;max-width:900px;margin:0 auto}
     </div>
     <div class="field">
       <label>Status</label>
-      <select id="m-prop-status" style="width:100%;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:13px;outline:none">
+      <select id="m-prop-status" style="width:100%;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:calc(13px * var(--fs,1));outline:none">
         <option value="new">New</option>
         <option value="exploring">Exploring</option>
         <option value="proposed">Proposed</option>
@@ -580,7 +617,7 @@ main{padding:14px 14px 96px;max-width:900px;margin:0 auto}
       <label>Notes (optional)</label>
       <textarea id="m-prop-notes" rows="3" placeholder="Contact, value, deadline…"
         autocorrect="on" autocapitalize="sentences"
-        style="width:100%;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-family:'Plus Jakarta Sans',sans-serif;font-size:13px;outline:none;resize:vertical"></textarea>
+        style="width:100%;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-family:'Plus Jakarta Sans',sans-serif;font-size:calc(13px * var(--fs,1));outline:none;resize:vertical"></textarea>
     </div>
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeProposalForm()">Cancel</button>
@@ -613,17 +650,17 @@ let editingProposalId = null;
 
 const DONE_LIMIT = 20; // Done column shows only the 20 most-recently-closed tasks
 const STATUSES = [
-  { id:'todo',       label:'To Do',       color:'#555'    },
-  { id:'inprogress', label:'In Progress', color:'#47c8ff' },
-  { id:'onhold',     label:'On Hold',     color:'#ff9800' },
-  { id:'done',       label:'Done',        color:'#47ff8a' },
+  { id:'todo',       label:'To Do',       color:'var(--p-grey-dim)' },
+  { id:'inprogress', label:'In Progress', color:'var(--p-blue)'     },
+  { id:'onhold',     label:'On Hold',     color:'var(--p-orange)'   },
+  { id:'done',       label:'Done',        color:'var(--p-green)'    },
 ];
 
 const TASK_PRIORITIES = [
-  { id:'low',      label:'Low',      color:'#555'    },
-  { id:'normal',   label:'Normal',   color:'#47c8ff' },
-  { id:'high',     label:'High',     color:'#ffaa00' },
-  { id:'critical', label:'Critical', color:'#ff4757' },
+  { id:'low',      label:'Low',      color:'var(--p-grey-dim)' },
+  { id:'normal',   label:'Normal',   color:'var(--p-blue)'     },
+  { id:'high',     label:'High',     color:'var(--p-amber)'    },
+  { id:'critical', label:'Critical', color:'var(--p-red)'      },
 ];
 const PRIO_ORDER = { critical:0, high:1, normal:2, low:3 };
 
@@ -632,13 +669,43 @@ function loadCfg()  { try { return JSON.parse(localStorage.getItem('tt_fb_config
 function saveCfg(c) { localStorage.setItem('tt_fb_config', JSON.stringify(c)); }
 
 // ── Theme ─────────────────────────────────────────────────────────────────────
+// Chromium will not re-resolve a var()-derived colour on an element that has a
+// CSS transition when the custom property changes at the root — the element
+// keeps the old palette until it is recreated. Swapping the theme with all
+// transitions suppressed for one frame forces every element onto the new values.
+function swapThemeWithoutTransitions(apply) {
+  const stop = document.createElement('style');
+  stop.textContent = '*,*::before,*::after{transition:none !important}';
+  document.head.appendChild(stop);
+  apply();
+  void document.body.offsetWidth;   // flush the new values
+  requestAnimationFrame(() => requestAnimationFrame(() => stop.remove()));
+}
+
 window.applyTheme = function(light) {
-  document.documentElement.setAttribute('data-theme', light ? 'light' : 'dark');
+  swapThemeWithoutTransitions(() =>
+    document.documentElement.setAttribute('data-theme', light ? 'light' : 'dark'));
   document.getElementById('meta-theme-color').setAttribute('content', light ? '#f3f4f6' : '#0d0d0d');
   localStorage.setItem('tt_theme', light ? 'light' : 'dark');
   document.getElementById('theme-toggle').checked = light;
 };
 applyTheme(localStorage.getItem('tt_theme') === 'light');
+
+// ── Text size ─────────────────────────────────────────────────────────────────
+const FONT_SCALES = [0.9, 1, 1.15, 1.3];
+function fontScale() { return +localStorage.getItem('tt_font_scale') || 1; }
+function applyFontScale(scale) {
+  document.documentElement.style.setProperty('--fs', scale);
+  document.querySelectorAll('#fs-picker .fs-btn').forEach(b => {
+    b.classList.toggle('active', +b.dataset.scale === scale);
+  });
+}
+window.setFontScale = function(scale) {
+  if (!FONT_SCALES.includes(scale)) return;
+  localStorage.setItem('tt_font_scale', scale);
+  applyFontScale(scale);
+};
+applyFontScale(fontScale());
 
 // ── Drawer ────────────────────────────────────────────────────────────────────
 window.openDrawer  = () => { document.getElementById('settings-drawer').classList.add('open'); document.getElementById('drawer-overlay').classList.add('open'); };
@@ -843,7 +910,7 @@ function renderBoard() {
         ? `<div class="empty"><div class="empty-icon">👋</div>Add customers &amp; projects<br>via Settings → Customers &amp; Projects</div>`
         : `<div class="empty"><div class="empty-icon">·</div>No tasks</div>`;
     const hiddenNote = (s.id === 'done' && total > DONE_LIMIT)
-      ? `<div style="font-size:11px;color:var(--text2);text-align:center;padding:8px 0 2px">+${total-DONE_LIMIT} older done task${total-DONE_LIMIT>1?'s':''} hidden</div>` : '';
+      ? `<div style="font-size:calc(11px * var(--fs,1));color:var(--text2);text-align:center;padding:8px 0 2px">+${total-DONE_LIMIT} older done task${total-DONE_LIMIT>1?'s':''} hidden</div>` : '';
     const addBtns = s.id === 'todo' ? addButtons(cc, cp) : '';
     return `<div class="col" data-status="${s.id}" ondragover="taskDragOver(event)" ondragleave="taskDragLeave(event)" ondrop="taskDrop(event,'${s.id}')">
       <div class="col-hdr">
@@ -865,7 +932,7 @@ function cardHtml(t) {
   const prio   = TASK_PRIORITIES.find(p => p.id === t.priority);
   const statusColor = (STATUSES.find(s => s.id === t.status) || STATUSES[0]).color;
   const prioBadge = prio && t.priority !== 'normal'
-    ? `<span style="font-size:9px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:1px 5px;border-radius:3px;background:${prio.color}20;color:${prio.color};border:1px solid ${prio.color}40;flex-shrink:0">${prio.label}</span>`
+    ? `<span style="font-size:calc(9px * var(--fs,1));font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:1px 5px;border-radius:3px;background:color-mix(in srgb, ${prio.color} 14%, transparent);color:${prio.color};border:1px solid color-mix(in srgb, ${prio.color} 30%, transparent);flex-shrink:0">${prio.label}</span>`
     : '';
   return `<div class="card ${t.status}" data-id="${t.id}" data-status="${t.status}" draggable="true" ondragstart="taskDragStart(event,'${t.id}')" ondragend="taskDragEnd(event)">
     <div style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px;align-items:start;margin-bottom:2px">
@@ -873,9 +940,9 @@ function cardHtml(t) {
       ${prioBadge || '<span></span>'}
     </div>
     <div class="card-meta">${esc(t.customerName||'')} › ${esc(t.projectName||'')}${t.recurrence?` <span style="color:var(--accent);font-weight:600">· 🔁 ${t.recurrence==='monthly'?'Monthly':'Weekly'}</span>`:''}</div>
-    ${t.notes?`<div class="card-note" style="font-size:12px;color:var(--text2);white-space:pre-wrap;margin:4px 0 2px;padding-left:7px;border-left:2px solid var(--border)">${esc(t.notes)}</div>`:''}
+    ${t.notes?`<div class="card-note" style="font-size:calc(12px * var(--fs,1));color:var(--text2);white-space:pre-wrap;margin:4px 0 2px;padding-left:7px;border-left:2px solid var(--border)">${esc(t.notes)}</div>`:''}
     <div class="card-actions">
-      <select class="card-status-select" style="color:${statusColor};border-color:${statusColor}66" onmousedown="event.stopPropagation()" onchange="advance('${t.id}',this.value)">
+      <select class="card-status-select" style="color:${statusColor};border-color:color-mix(in srgb, ${statusColor} 45%, transparent)" onmousedown="event.stopPropagation()" onchange="advance('${t.id}',this.value)">
         ${STATUSES.map(s=>`<option value="${s.id}"${s.id===t.status?' selected':''}>${s.label}</option>`).join('')}
       </select>
       <button class="card-btn${t.notes?' advance':''}" onclick="openNoteModal('${t.id}')">📝 Note</button>
@@ -1458,17 +1525,17 @@ window.toggleNotifMenu     = toggleNotifMenu;
 
 // ── Ideas ─────────────────────────────────────────────────────────────────────
 const IDEA_STATUSES = [
-  { id:'idea',      label:'Idea',      color:'#7c8cf8' },
-  { id:'exploring', label:'Exploring', color:'#f5a32a' },
-  { id:'building',  label:'Building',  color:'#4caf91' },
-  { id:'done',      label:'Done',      color:'#888'    },
+  { id:'idea',      label:'Idea',      color:'var(--p-indigo)' },
+  { id:'exploring', label:'Exploring', color:'var(--p-gold)'   },
+  { id:'building',  label:'Building',  color:'var(--p-teal)'   },
+  { id:'done',      label:'Done',      color:'var(--p-grey)'   },
 ];
 
 function renderIdeas() {
   const el = document.getElementById('ideas-list');
   if (!el) return;
   if (!ideas.length) {
-    el.innerHTML = `<div style="text-align:center;padding:32px 0;color:var(--text2);font-size:13px">No ideas yet</div>`;
+    el.innerHTML = `<div style="text-align:center;padding:32px 0;color:var(--text2);font-size:calc(13px * var(--fs,1))">No ideas yet</div>`;
     return;
   }
   el.innerHTML = ideas.map(idea => {
@@ -1476,16 +1543,16 @@ function renderIdeas() {
     return `<div style="background:var(--surface2);border:1px solid var(--border);border-left:3px solid ${st.color};border-radius:10px;padding:12px 14px;margin-bottom:10px">
       <div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:8px">
         <div style="flex:1">
-          <div style="font-size:13px;font-weight:600;margin-bottom:3px">${esc(idea.title)}</div>
-          ${idea.notes?`<div style="font-size:12px;color:var(--text2);white-space:pre-wrap">${esc(idea.notes)}</div>`:''}
+          <div style="font-size:calc(13px * var(--fs,1));font-weight:600;margin-bottom:3px">${esc(idea.title)}</div>
+          ${idea.notes?`<div style="font-size:calc(12px * var(--fs,1));color:var(--text2);white-space:pre-wrap">${esc(idea.notes)}</div>`:''}
         </div>
-        <span style="font-size:10px;font-weight:600;padding:3px 8px;border-radius:20px;background:${st.color}20;color:${st.color};white-space:nowrap;flex-shrink:0">${st.label}</span>
+        <span style="font-size:calc(10px * var(--fs,1));font-weight:600;padding:3px 8px;border-radius:20px;background:color-mix(in srgb, ${st.color} 14%, transparent);color:${st.color};white-space:nowrap;flex-shrink:0">${st.label}</span>
       </div>
       <div style="display:flex;gap:6px">
-        <button onclick="openEditIdeaForm('${idea.id}')" style="flex:1;padding:6px;border-radius:7px;border:1px solid var(--border);background:var(--surface3);color:var(--text);font-size:11px;font-weight:600;cursor:pointer">✎ Edit</button>
-        <button onclick="cycleIdeaStatus('${idea.id}','${idea.status}')" style="flex:1;padding:6px;border-radius:7px;border:1px solid var(--border);background:var(--surface3);color:var(--text);font-size:11px;font-weight:600;cursor:pointer">→ Next</button>
-        <button onclick="copyText(this)" data-copy="${esc(idea.notes ? idea.title+'\n\n'+idea.notes : idea.title)}" title="Copy" style="padding:6px 10px;border-radius:7px;border:1px solid var(--border);background:var(--surface3);color:var(--text);font-size:11px;cursor:pointer">⎘</button>
-        <button onclick="removeIdea('${idea.id}')" style="padding:6px 10px;border-radius:7px;border:1px solid var(--border);background:var(--surface3);color:var(--text2);font-size:11px;cursor:pointer">✕</button>
+        <button onclick="openEditIdeaForm('${idea.id}')" style="flex:1;padding:6px;border-radius:7px;border:1px solid var(--border);background:var(--surface3);color:var(--text);font-size:calc(11px * var(--fs,1));font-weight:600;cursor:pointer">✎ Edit</button>
+        <button onclick="cycleIdeaStatus('${idea.id}','${idea.status}')" style="flex:1;padding:6px;border-radius:7px;border:1px solid var(--border);background:var(--surface3);color:var(--text);font-size:calc(11px * var(--fs,1));font-weight:600;cursor:pointer">→ Next</button>
+        <button onclick="copyText(this)" data-copy="${esc(idea.notes ? idea.title+'\n\n'+idea.notes : idea.title)}" title="Copy" style="padding:6px 10px;border-radius:7px;border:1px solid var(--border);background:var(--surface3);color:var(--text);font-size:calc(11px * var(--fs,1));cursor:pointer">⎘</button>
+        <button onclick="removeIdea('${idea.id}')" style="padding:6px 10px;border-radius:7px;border:1px solid var(--border);background:var(--surface3);color:var(--text2);font-size:calc(11px * var(--fs,1));cursor:pointer">✕</button>
       </div>
     </div>`;
   }).join('');
@@ -1553,35 +1620,35 @@ window.removeIdea = async function(id) {
 
 // ── Opportunities ─────────────────────────────────────────────────────────────
 const PROPOSAL_STATUSES = [
-  { id:'new',       label:'New',       color:'#7c8cf8' },
-  { id:'exploring', label:'Exploring', color:'#f5a32a' },
-  { id:'proposed',  label:'Proposed',  color:'#47c8ff' },
-  { id:'won',       label:'Won',       color:'#4caf91' },
-  { id:'lost',      label:'Lost',      color:'#f55'    },
+  { id:'new',       label:'New',       color:'var(--p-indigo)' },
+  { id:'exploring', label:'Exploring', color:'var(--p-gold)'   },
+  { id:'proposed',  label:'Proposed',  color:'var(--p-blue)'   },
+  { id:'won',       label:'Won',       color:'var(--p-teal)'   },
+  { id:'lost',      label:'Lost',      color:'var(--p-red)'    },
 ];
 
 function renderProposals() {
   const el = document.getElementById('proposals-list');
   if (!el) return;
   if (!proposals.length) {
-    el.innerHTML = `<div style="text-align:center;padding:32px 0;color:var(--text2);font-size:13px">No opportunities yet</div>`;
+    el.innerHTML = `<div style="text-align:center;padding:32px 0;color:var(--text2);font-size:calc(13px * var(--fs,1))">No opportunities yet</div>`;
     return;
   }
   el.innerHTML = proposals.map(p => {
     const st    = PROPOSAL_STATUSES.find(s=>s.id===p.status) || PROPOSAL_STATUSES[0];
-    const notes = p.notes ? `<div style="font-size:12px;color:var(--text2);white-space:pre-wrap;margin-top:4px">${esc(p.notes)}</div>` : '';
+    const notes = p.notes ? `<div style="font-size:calc(12px * var(--fs,1));color:var(--text2);white-space:pre-wrap;margin-top:4px">${esc(p.notes)}</div>` : '';
     return `<div style="background:var(--surface2);border:1px solid var(--border);border-left:3px solid ${st.color};border-radius:10px;padding:12px 14px;margin-bottom:10px">
       <div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:8px">
         <div style="flex:1">
-          <div style="font-size:13px;font-weight:600;margin-bottom:3px">${esc(p.title)}</div>
+          <div style="font-size:calc(13px * var(--fs,1));font-weight:600;margin-bottom:3px">${esc(p.title)}</div>
           ${notes}
         </div>
-        <span style="font-size:10px;font-weight:600;padding:3px 8px;border-radius:20px;background:${st.color}20;color:${st.color};white-space:nowrap;flex-shrink:0">${st.label}</span>
+        <span style="font-size:calc(10px * var(--fs,1));font-weight:600;padding:3px 8px;border-radius:20px;background:color-mix(in srgb, ${st.color} 14%, transparent);color:${st.color};white-space:nowrap;flex-shrink:0">${st.label}</span>
       </div>
       <div style="display:flex;gap:6px">
-        <button onclick="openEditProposalForm('${p.id}')" style="flex:1;padding:6px;border-radius:7px;border:1px solid var(--border);background:var(--surface3);color:var(--text);font-size:11px;font-weight:600;cursor:pointer">✎ Edit</button>
-        <button onclick="cycleProposalStatus('${p.id}','${p.status}')" style="flex:1;padding:6px;border-radius:7px;border:1px solid var(--border);background:var(--surface3);color:var(--text);font-size:11px;font-weight:600;cursor:pointer">→ Next</button>
-        <button onclick="removeProposal('${p.id}')" style="padding:6px 10px;border-radius:7px;border:1px solid var(--border);background:var(--surface3);color:var(--text2);font-size:11px;cursor:pointer">✕</button>
+        <button onclick="openEditProposalForm('${p.id}')" style="flex:1;padding:6px;border-radius:7px;border:1px solid var(--border);background:var(--surface3);color:var(--text);font-size:calc(11px * var(--fs,1));font-weight:600;cursor:pointer">✎ Edit</button>
+        <button onclick="cycleProposalStatus('${p.id}','${p.status}')" style="flex:1;padding:6px;border-radius:7px;border:1px solid var(--border);background:var(--surface3);color:var(--text);font-size:calc(11px * var(--fs,1));font-weight:600;cursor:pointer">→ Next</button>
+        <button onclick="removeProposal('${p.id}')" style="padding:6px 10px;border-radius:7px;border:1px solid var(--border);background:var(--surface3);color:var(--text2);font-size:calc(11px * var(--fs,1));cursor:pointer">✕</button>
       </div>
     </div>`;
   }).join('');
