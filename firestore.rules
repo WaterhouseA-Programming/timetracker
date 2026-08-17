@@ -1,0 +1,51 @@
+rules_version = '2';
+
+// Security rules for the TimeTracker / Nimble Panda Firestore backend, shared by
+// the desktop app (src/) and the PWA (tasks-web/).
+//
+// These are NOT applied by pushing to this repo. Firestore rules are deployed
+// from the Firebase console (Firestore Database -> Rules -> Publish) or with
+// `firebase deploy --only firestore:rules`. This file exists so the deployed
+// policy is reviewable and has a history.
+//
+// Baseline: every collection requires a signed-in user. The apps sign in with
+// email/password, so an anonymous reader gets nothing.
+//
+// IMPORTANT: Firebase email/password allows public self-signup through the REST
+// API by default, which would let a stranger create an account and satisfy
+// signedIn(). Turn that off:
+//   Firebase console -> Authentication -> Settings -> User actions
+//   -> untick "Enable create (sign-up)"
+//
+// For a stricter lock, replace signedIn() with isOwner() below and paste your
+// own UID (Firebase console -> Authentication -> Users -> User UID).
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    // Stronger alternative to signedIn(). Swap the calls below to use it.
+    // function isOwner() {
+    //   return request.auth != null
+    //          && request.auth.uid in ['PASTE_YOUR_UID_HERE'];
+    // }
+
+    match /customers/{doc} { allow read, write: if signedIn(); }
+    match /projects/{doc}  { allow read, write: if signedIn(); }
+    match /tasks/{doc}     { allow read, write: if signedIn(); }
+    match /entries/{doc}   { allow read, write: if signedIn(); }
+    match /ideas/{doc}     { allow read, write: if signedIn(); }
+    match /proposals/{doc} { allow read, write: if signedIn(); }
+    match /invoices/{doc}  { allow read, write: if signedIn(); }
+    match /settings/{doc}  { allow read, write: if signedIn(); }
+
+    // Anything not named above is denied, including future collections added by
+    // mistake. Add an explicit match block when you add a real collection.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

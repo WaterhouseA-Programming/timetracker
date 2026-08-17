@@ -14,8 +14,12 @@
            script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://www.gstatic.com https://fonts.googleapis.com;
            style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
            font-src https://fonts.gstatic.com;
-           connect-src https://*.googleapis.com https://*.firebaseio.com https://*.google.com wss://*.firebaseio.com;
-           img-src 'self' data:;">
+           connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://*.google.com wss://*.firebaseio.com;
+           img-src 'self' data:;
+           worker-src 'self';
+           base-uri 'none';
+           form-action 'none';
+           object-src 'none'">
 <title>TimeTracker</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -1026,6 +1030,16 @@ function doStartTimer(customer, project, category, taskId, taskTitle) {
 }
 window.doStartTimer = doStartTimer;
 
+// Start buttons pass ids, not serialised objects. JSON.stringify does not escape
+// apostrophes, so a customer named O'Brien both broke the button and let the
+// name close the onclick attribute and inject a handler.
+function doStartTimerById(customerId, projectId) {
+  const c = customers.find(x => x.id === customerId);
+  const p = c && (c.projects || []).find(x => x.id === projectId);
+  if (c && p) doStartTimer({ id: c.id, name: c.name }, { id: p.id, name: p.name });
+}
+window.doStartTimerById = doStartTimerById;
+
 async function doStopTimer(key, trimSeconds) {
   const t = key ? activeTimers[key] : Object.values(activeTimers)[0];
   if (!t) return;
@@ -1381,7 +1395,7 @@ function renderTracker() {
         <span class="project-name">${esc(p.name)}</span>
         ${isActive
           ? `<button class="start-btn active-timer" onclick="doStopTimer('${key}')">■ Stop</button>`
-          : `<button class="start-btn" onclick='doStartTimer(${JSON.stringify({id:c.id,name:c.name})},${JSON.stringify({id:p.id,name:p.name})})'>▶ Start</button>`
+          : `<button class="start-btn" onclick="doStartTimerById('${esc(c.id)}','${esc(p.id)}')">▶ Start</button>`
         }
       </div>`;
     }).join('');
@@ -1654,7 +1668,7 @@ function getAddBtns(fc, fp) {
     if (fc && c.id!==fc) continue;
     for (const p of (c.projects||[])) {
       if (fp && p.id!==fp) continue;
-      btns.push(`<button class="task-add-btn" onclick='addTask("${c.id}","${esc(c.name)}","${p.id}","${esc(p.name)}")'>+ ${esc(c.name)} › ${esc(p.name)}</button>`);
+      btns.push(`<button class="task-add-btn" onclick="addTaskById('${esc(c.id)}','${esc(p.id)}')">+ ${esc(c.name)} › ${esc(p.name)}</button>`);
     }
   }
   return btns.join('');
@@ -1838,7 +1852,8 @@ function openLogTimeModal(id) {
      </div>
      <div id="m-error" style="display:none;color:var(--red);font-size:calc(12px * var(--fs,1));margin-top:4px"></div>`,
     `<button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
-     <button class="btn btn-primary" onclick="doLogTime('${t.customerId}','${esc(t.customerName)}','${t.projectId}','${esc(t.projectName)}')">Save Entry</button>`);
+     <button class="btn btn-primary" onclick="doLogTimeFromModal()">Save Entry</button>`);
+  _modalArgs = { customerId: t.customerId, customerName: t.customerName, projectId: t.projectId, projectName: t.projectName };
   setTimeout(() => document.getElementById('m-log-h')?.focus(), 50);
 }
 window.openLogTimeModal = openLogTimeModal;
@@ -1872,6 +1887,27 @@ async function doLogTime(customerId, customerName, projectId, projectName) {
 }
 window.doLogTime = doLogTime;
 
+function doLogTimeFromModal() {
+  const a = _modalArgs;
+  if (a) doLogTime(a.customerId, a.customerName, a.projectId, a.projectName);
+}
+window.doLogTimeFromModal = doLogTimeFromModal;
+
+// Args for the modal that is currently open. Only one modal exists at a time, so
+// a single slot is enough — and it keeps customer/project names out of onclick
+// attributes entirely.
+let _modalArgs = null;
+
+// Names are looked up from ids rather than passed through the onclick attribute.
+// HTML-escaping is not enough there: the parser decodes &quot;/&#39; back into
+// real quotes before the JS string is parsed, so an escaped name still breaks out.
+function addTaskById(cid, pid) {
+  const c = customers.find(x => x.id === cid);
+  const p = c && (c.projects || []).find(x => x.id === pid);
+  if (c && p) addTask(c.id, c.name, p.id, p.name);
+}
+window.addTaskById = addTaskById;
+
 function addTask(cid, cname, pid, pname) {
   if (!db) return;
   const prioOpts = TASK_PRIORITIES.map(p=>`<option value="${p.id}"${p.id==='normal'?' selected':''}>${p.label}</option>`).join('');
@@ -1882,9 +1918,15 @@ function addTask(cid, cname, pid, pname) {
      <div class="form-field"><label>Note <span style="color:var(--muted2);font-weight:400">(optional)</span></label><textarea id="m-task-notes" rows="3" placeholder="e.g. Waiting on client sign-off" autocorrect="on" autocapitalize="sentences" style="width:100%;padding:9px 11px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:calc(12px * var(--fs,1));outline:none;resize:vertical;font-family:inherit"></textarea></div>
      <div id="m-error" style="display:none;color:var(--red);font-size:calc(12px * var(--fs,1));margin-top:8px"></div>`,
     `<button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
-     <button class="btn btn-primary" onclick="doAddTask('${cid}','${esc(cname)}','${pid}','${esc(pname)}')">Add</button>`);
+     <button class="btn btn-primary" onclick="doAddTaskFromArgs()">Add</button>`);
+  _modalArgs = { cid, cname, pid, pname };
   setTimeout(()=>document.getElementById('m-task-title')?.focus(),50);
 }
+function doAddTaskFromArgs() {
+  const a = _modalArgs;
+  if (a) doAddTask(a.cid, a.cname, a.pid, a.pname);
+}
+window.doAddTaskFromArgs = doAddTaskFromArgs;
 async function doAddTask(cid, cname, pid, pname, titleArg, prioArg) {
   const title = titleArg || document.getElementById('m-task-title')?.value.trim(); if(!title)return;
   const priority = prioArg || document.getElementById('m-task-prio')?.value || 'normal';
@@ -2461,10 +2503,17 @@ function openAddProject(custId, custName) {
        <div class="form-field" style="margin-bottom:0"><label>Rate ${sym}/hr (optional)</label><input id="m-rate" type="number" min="0" step="0.5" placeholder="${settings.billingRate ? 'Default: '+settings.billingRate : 'e.g. 85'}"></div>
      </div>`,
     `<button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
-     <button class="btn btn-primary" onclick="doAddProject('${custId}','${custName}')">Add</button>`);
+     <button class="btn btn-primary" onclick="doAddProjectFromArgs()">Add</button>`);
+  _modalArgs = { custId, custName };
   setTimeout(()=>document.getElementById('m-proj')?.focus(),50);
 }
 window.openAddProject = openAddProject;
+
+function doAddProjectFromArgs() {
+  const a = _modalArgs;
+  if (a) doAddProject(a.custId, a.custName);
+}
+window.doAddProjectFromArgs = doAddProjectFromArgs;
 
 async function doAddProject(custId, custName) {
   const name   = document.getElementById('m-proj').value.trim(); if(!name)return;
@@ -2910,7 +2959,10 @@ function fmtDur(s) {
   return `${sec}s`;
 }
 function pad(n){return String(n).padStart(2,'0')}
-function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+// Escapes ' and ` as well as the usual four. Values land inside single-quoted
+// HTML attributes (onclick='fn("...")'), so leaving apostrophes raw lets a
+// customer or project name close the attribute and inject its own handler.
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/`/g,'&#96;')}
 
 document.addEventListener('keydown', e=>{ if(e.key==='Escape') closeModal(); });
 

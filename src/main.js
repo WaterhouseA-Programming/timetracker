@@ -165,10 +165,36 @@ function createWindow() {
   mainWindow.on('close', e => { if (isQuitting) return; e.preventDefault(); mainWindow.hide(); });
   mainWindow.on('closed', () => { mainWindow = null; });
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-    if (url.includes('.firebaseapp.com') || url.includes('accounts.google.com')) return { action: 'allow' };
-    shell.openExternal(url);
+    // about:blank is the invoice print window (window.open('') + document.write).
+    if (url === 'about:blank' || url === '') return { action: 'allow' };
+    if (isTrustedAuthUrl(url)) return { action: 'allow' };
+    // Only ever hand http(s) to the OS. Without the scheme check, an injected
+    // window.open('ms-msdt:…') would be launched as a local protocol handler.
+    if (isExternallyOpenable(url)) shell.openExternal(url);
     return { action: 'deny' };
   });
+
+  // The renderer is a local file and never navigates. Block anything that tries,
+  // so injected script cannot replace the app with a remote page.
+  mainWindow.webContents.on('will-navigate', (e, url) => {
+    if (!url.startsWith('file://')) e.preventDefault();
+  });
+}
+
+// Hostname match, not substring: 'https://evil.com/#.firebaseapp.com' contains
+// '.firebaseapp.com' but is not a Firebase host.
+function isTrustedAuthUrl(url) {
+  let u;
+  try { u = new URL(url); } catch { return false; }
+  if (u.protocol !== 'https:') return false;
+  return u.hostname.endsWith('.firebaseapp.com') || u.hostname === 'accounts.google.com';
+}
+
+function isExternallyOpenable(url) {
+  try {
+    const p = new URL(url).protocol;
+    return p === 'https:' || p === 'http:';
+  } catch { return false; }
 }
 
 // ─── Tray ─────────────────────────────────────────────────────────────────────

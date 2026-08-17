@@ -16,7 +16,8 @@ Follow these steps once to enable real-time task sync across all your devices.
 
 1. In the left sidebar go to **Build → Firestore Database**
 2. Click **Create database**
-3. Choose **Start in test mode** (fine for personal use)
+3. Choose **Start in production mode** (test mode leaves the database open to the
+   world; you will paste the real rules in the last step of this guide)
 4. Pick any region → **Enable**
 
 ---
@@ -67,19 +68,23 @@ The easiest free options:
 
 ---
 
-## Firestore rules (lock it down when ready)
+## Firestore rules — do this before you put real data in
 
-In the Firebase console go to **Firestore → Rules** and replace with:
+Both apps sign in with email/password, but sign-in in the client is only cosmetic
+until the rules enforce it. With test-mode rules (`allow read, write: if true`)
+anyone who learns your `projectId` can read and write every customer name, task,
+time entry and invoice in the database. The `projectId` is not a secret.
 
-```
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    match /tasks/{taskId} {
-      allow read, write: if true; // tighten this with auth later
-    }
-  }
-}
-```
+The policy lives in [`firestore.rules`](firestore.rules) in this repo. Rules are
+**not** deployed by pushing to master — copy the file's contents into the Firebase
+console under **Firestore Database → Rules → Publish**, or run
+`firebase deploy --only firestore:rules`.
 
-For a private setup with Google sign-in, come back to this when you're ready to add auth.
+Then close off public sign-up, otherwise a stranger can create an account and pass
+the signed-in check:
+
+**Firebase console → Authentication → Settings → User actions →** untick
+**Enable create (sign-up)**.
+
+To verify the lock worked, sign out in the app: the board should show the sign-in
+overlay and the sync dot should stay grey.
