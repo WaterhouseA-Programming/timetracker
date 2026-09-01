@@ -726,6 +726,44 @@ const TASK_PRIORITIES = [
   { id:'critical', label:'Critical', color:'var(--p-red)'      },
 ];
 const PRIO_ORDER = { critical:0, high:1, normal:2, low:3 };
+
+// --- Recurring tasks ---------------------------------------------------------
+// A recurring task spawns its next copy with a dueAt (ms since epoch, midnight
+// local). The copy stays hidden from the board until that date arrives.
+function nextRecurrenceDue(recurrence, baseMs, anchorOverride) {
+  const now = Date.now();
+  const base = new Date(baseMs || now);
+  base.setHours(0,0,0,0);
+  if (recurrence === 'weekly') {
+    const d = new Date(base);
+    do { d.setDate(d.getDate() + 7); } while (d.getTime() <= now);
+    return d.getTime();
+  }
+  // anchorOverride keeps a 29th/30th/31st monthly on its original day after a
+  // short month has clamped it (31 Jan -> 28 Feb -> 31 Mar, not 28 Mar).
+  const anchorDay = anchorOverride || base.getDate();
+  const y = base.getFullYear();
+  let m = base.getMonth(), t;
+  do {
+    m += 1;
+    const daysInMonth = new Date(y, m + 1, 0).getDate();
+    t = new Date(y, m, Math.min(anchorDay, daysInMonth)).getTime();
+  } while (t <= now);
+  return t;
+}
+function isScheduledAhead(t) { return typeof t.dueAt === 'number' && t.dueAt > Date.now(); }
+function fmtDueDate(ms) { return new Date(ms).toLocaleDateString(undefined,{day:'numeric',month:'short'}); }
+// Re-render when the soonest scheduled task falls due, so a long-running window
+// picks it up without a manual refresh (capped so setTimeout can't overflow).
+let _recurWakeTimer = null, _recurWakeAt = null;
+function scheduleRecurrenceWake(dueAt) {
+  if (!dueAt) { clearTimeout(_recurWakeTimer); _recurWakeTimer = _recurWakeAt = null; return; }
+  if (_recurWakeAt === dueAt) return;
+  clearTimeout(_recurWakeTimer);
+  _recurWakeAt = dueAt;
+  const delay = Math.min(Math.max(dueAt - Date.now() + 1000, 1000), 60*60*1000);
+  _recurWakeTimer = setTimeout(() => { _recurWakeAt = null; renderTasks(); }, delay);
+}
 const CHART_PALETTE       = ['#e8ff47','#47c8ff','#ff6b9d','#47ff8a','#ff9f47','#c847ff','#47ffe0','#ff4757'];
 const CHART_PALETTE_LIGHT = ['#7a8f00','#0b6ea8','#b01253','#0f7a3d','#a35c00','#7b17b8','#0b6f70','#c2182b'];
 const isLightTheme = () => document.body.getAttribute('data-theme') === 'light';
@@ -1584,6 +1622,10 @@ function renderTasks() {
   let filtered = tasks;
   if (fc) filtered = filtered.filter(t=>t.customerId===fc);
   if (fp) filtered = filtered.filter(t=>t.projectId===fp);
+  // Recurring copies scheduled for a future date stay off the board until due
+  const scheduled = filtered.filter(isScheduledAhead).sort((a,b)=>a.dueAt-b.dueAt);
+  filtered = filtered.filter(t=>!isScheduledAhead(t));
+  scheduleRecurrenceWake(scheduled[0]?.dueAt);
 
   el.innerHTML = `
     <div class="task-filter-bar">
@@ -1619,7 +1661,9 @@ function renderTasks() {
           });
         }
         const hiddenNote = (s.id==='done' && total>DONE_LIMIT)
-          ? `<div style="font-size:calc(10px * var(--fs,1));color:var(--muted2);text-align:center;padding:8px 0 2px">+${total-DONE_LIMIT} older done task${total-DONE_LIMIT>1?'s':''} hidden</div>` : '';
+          ? `<div style="font-size:calc(10px * var(--fs,1));color:var(--muted2);text-align:center;padding:8px 0 2px">+${total-DONE_LIMIT} older done task${total-DONE_LIMIT>1?'s':''} hidden</div>`
+          : (s.id==='todo' && scheduled.length)
+          ? `<div style="font-size:calc(10px * var(--fs,1));color:var(--muted2);text-align:center;padding:8px 0 2px">🔁 ${scheduled.length} recurring task${scheduled.length>1?'s':''} scheduled · next ${fmtDueDate(scheduled[0].dueAt)}</div>` : '';
         return `<div class="task-col" data-status="${s.id}" ondragover="taskDragOver(event)" ondragleave="taskDragLeave(event)" ondrop="taskDrop(event,'${s.id}')">
           <div class="task-col-header"><span class="col-dot" style="background:${s.color}"></span>${s.label}<span style="margin-left:auto">${total}</span></div>
           ${col.map(t=>taskCardHtml(t)).join('')}
@@ -1745,7 +1789,7 @@ function openEditTaskModal(id) {
   const prioOpts = TASK_PRIORITIES.map(p=>`<option value="${p.id}"${p.id===(t.priority||'normal')?' selected':''}>${p.label}</option>`).join('');
   const recurOpts = [['','Doesn\'t repeat'],['weekly','Weekly'],['monthly','Monthly']].map(([v,l])=>`<option value="${v}"${v===(t.recurrence||'')?' selected':''}>${l}</option>`).join('');
   const currentDeps = t.dependsOn || [];
-  const otherTasks = tasks.filter(x=>x.id!==id&&x.status!=='done');
+  const otherTasks = tasks.filter(x=>x.id!==id&&x.status!=='done'&&!isScheduledAhead(x));
   const depChecks = otherTasks.length
     ? otherTasks.map(x=>`<label class="task-dep-check"><input type="checkbox" value="${x.id}"${currentDeps.includes(x.id)?' checked':''}><span>${esc(x.title)}<span style="color:var(--muted2);margin-left:4px">(${esc(x.customerName||'')} › ${esc(x.projectName||'')})</span></span></label>`).join('')
     : `<div style="font-size:calc(11px * var(--fs,1));color:var(--muted2)">No other open tasks to link</div>`;
@@ -1972,6 +2016,8 @@ async function advanceTask(id, status) {
         customerId: src.customerId, customerName: src.customerName,
         projectId: src.projectId,  projectName: src.projectName,
         createdAt: serverTimestamp(),
+        dueAt: nextRecurrenceDue(src.recurrence, src.dueAt, src.recurAnchorDay),
+        recurAnchorDay: src.recurAnchorDay || new Date(src.dueAt || Date.now()).getDate(),
       });
     }
   }
