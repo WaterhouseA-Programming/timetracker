@@ -676,6 +676,44 @@ const TASK_PRIORITIES = [
 ];
 const PRIO_ORDER = { critical:0, high:1, normal:2, low:3 };
 
+// --- Recurring tasks ---------------------------------------------------------
+// A recurring task spawns its next copy with a dueAt (ms since epoch, midnight
+// local). The copy stays hidden from the board until that date arrives.
+function nextRecurrenceDue(recurrence, baseMs, anchorOverride) {
+  const now = Date.now();
+  const base = new Date(baseMs || now);
+  base.setHours(0,0,0,0);
+  if (recurrence === 'weekly') {
+    const d = new Date(base);
+    do { d.setDate(d.getDate() + 7); } while (d.getTime() <= now);
+    return d.getTime();
+  }
+  // anchorOverride keeps a 29th/30th/31st monthly on its original day after a
+  // short month has clamped it (31 Jan -> 28 Feb -> 31 Mar, not 28 Mar).
+  const anchorDay = anchorOverride || base.getDate();
+  const y = base.getFullYear();
+  let m = base.getMonth(), t;
+  do {
+    m += 1;
+    const daysInMonth = new Date(y, m + 1, 0).getDate();
+    t = new Date(y, m, Math.min(anchorDay, daysInMonth)).getTime();
+  } while (t <= now);
+  return t;
+}
+function isScheduledAhead(t) { return typeof t.dueAt === 'number' && t.dueAt > Date.now(); }
+function fmtDueDate(ms) { return new Date(ms).toLocaleDateString(undefined,{day:'numeric',month:'short'}); }
+// Re-render when the soonest scheduled task falls due, so a long-lived tab picks
+// it up without a manual refresh (capped so setTimeout can't overflow).
+let _recurWakeTimer = null, _recurWakeAt = null;
+function scheduleRecurrenceWake(dueAt) {
+  if (!dueAt) { clearTimeout(_recurWakeTimer); _recurWakeTimer = _recurWakeAt = null; return; }
+  if (_recurWakeAt === dueAt) return;
+  clearTimeout(_recurWakeTimer);
+  _recurWakeAt = dueAt;
+  const delay = Math.min(Math.max(dueAt - Date.now() + 1000, 1000), 60*60*1000);
+  _recurWakeTimer = setTimeout(() => { _recurWakeAt = null; renderBoard(); }, delay);
+}
+
 // ── Config ────────────────────────────────────────────────────────────────────
 function loadCfg()  { try { return JSON.parse(localStorage.getItem('tt_fb_config')); } catch { return null; } }
 function saveCfg(c) { localStorage.setItem('tt_fb_config', JSON.stringify(c)); }
@@ -893,6 +931,10 @@ function renderBoard() {
   let filtered = tasks;
   if (cc) filtered = filtered.filter(t => t.customerId === cc);
   if (cp) filtered = filtered.filter(t => t.projectId  === cp);
+  // Recurring copies scheduled for a future date stay off the board until due
+  const scheduled = filtered.filter(isScheduledAhead).sort((a,b) => a.dueAt - b.dueAt);
+  filtered = filtered.filter(t => !isScheduledAhead(t));
+  scheduleRecurrenceWake(scheduled[0]?.dueAt);
 
   const noProjects = !allProjects.length;
   document.getElementById('cols').innerHTML = STATUSES.map(s => {
@@ -922,7 +964,9 @@ function renderBoard() {
         ? `<div class="empty"><div class="empty-icon">👋</div>Add customers &amp; projects<br>via Settings → Customers &amp; Projects</div>`
         : `<div class="empty"><div class="empty-icon">·</div>No tasks</div>`;
     const hiddenNote = (s.id === 'done' && total > DONE_LIMIT)
-      ? `<div style="font-size:calc(11px * var(--fs,1));color:var(--text2);text-align:center;padding:8px 0 2px">+${total-DONE_LIMIT} older done task${total-DONE_LIMIT>1?'s':''} hidden</div>` : '';
+      ? `<div style="font-size:calc(11px * var(--fs,1));color:var(--text2);text-align:center;padding:8px 0 2px">+${total-DONE_LIMIT} older done task${total-DONE_LIMIT>1?'s':''} hidden</div>`
+      : (s.id === 'todo' && scheduled.length)
+      ? `<div style="font-size:calc(11px * var(--fs,1));color:var(--text2);text-align:center;padding:8px 0 2px">🔁 ${scheduled.length} recurring task${scheduled.length>1?'s':''} scheduled · next ${fmtDueDate(scheduled[0].dueAt)}</div>` : '';
     const addBtns = s.id === 'todo' ? addButtons(cc, cp) : '';
     return `<div class="col" data-status="${s.id}" ondragover="taskDragOver(event)" ondragleave="taskDragLeave(event)" ondrop="taskDrop(event,'${s.id}')">
       <div class="col-hdr">
@@ -991,6 +1035,8 @@ window.advance = async (id, status) => {
       customerId: t.customerId, customerName: t.customerName,
       projectId: t.projectId,  projectName: t.projectName,
       createdAt: serverTimestamp(),
+      dueAt: nextRecurrenceDue(t.recurrence, t.dueAt, t.recurAnchorDay),
+      recurAnchorDay: t.recurAnchorDay || new Date(t.dueAt || Date.now()).getDate(),
     });
   }
 };
@@ -1479,7 +1525,7 @@ window.toggleNotifMenu     = toggleNotifMenu;
     const todayStr = now.toDateString();
     if (lastDay === todayStr) return;
 
-    const todo       = tasks.filter(t => t.status === 'todo').length;
+    const todo       = tasks.filter(t => t.status === 'todo' && !isScheduledAhead(t)).length;
     const inProgress = tasks.filter(t => t.status === 'inprogress').length;
     const onHold     = tasks.filter(t => t.status === 'onhold').length;
     const total      = todo + inProgress + onHold;
