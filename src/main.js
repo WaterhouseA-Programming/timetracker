@@ -410,7 +410,7 @@ function promptClaudeTime() {
 }
 
 // ─── Idle detection ───────────────────────────────────────────────────────────
-const IDLE_THRESHOLD = 10 * 60;
+const IDLE_THRESHOLD = 30 * 60;
 
 function checkIdle() {
   if (!activeTimers.length || idleDialogOpen || !mainWindow) return;
