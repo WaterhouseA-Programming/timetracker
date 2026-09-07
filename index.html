@@ -222,7 +222,12 @@ main{padding:14px 14px 96px;max-width:900px;margin:0 auto}
 .manage-cust-name{font-size:calc(12px * var(--fs,1));font-weight:700;flex:1}
 .manage-projects{padding:0 12px 8px}
 .manage-proj{display:flex;align-items:center;gap:6px;padding:6px 0;border-top:1px solid var(--border)}
-.manage-proj-name{font-size:calc(11px * var(--fs,1));color:var(--text2);flex:1}
+.manage-proj-name{font-size:calc(11px * var(--fs,1));color:var(--text2);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.manage-proj-btn{width:28px;height:28px;flex-shrink:0;border-radius:6px;background:var(--surface3);border:1px solid var(--border);color:var(--text2);font-size:calc(11px * var(--fs,1));font-family:inherit;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .12s}
+.manage-proj-btn:hover{color:var(--text)}
+.manage-proj-btn.danger{color:var(--red)}
+.manage-proj-edit{display:flex;gap:6px;align-items:center;width:100%;min-width:0}
+.manage-proj-edit input{flex:1;min-width:0;padding:6px 9px;background:var(--bg);border:1px solid var(--accent);border-radius:var(--radius-sm);color:var(--text);font-family:inherit;font-size:calc(12px * var(--fs,1));outline:none}
 .manage-add-proj{display:flex;gap:6px;padding:8px 0 2px;border-top:1px solid var(--border)}
 .manage-add-proj input{flex:1;padding:7px 10px;font-size:calc(12px * var(--fs,1))}
 .add-cust-row{display:flex;gap:8px;margin-top:8px;padding-top:14px;border-top:1px solid var(--border)}
@@ -1267,7 +1272,10 @@ window.saveNote = async function() {
 };
 
 // ── Manage customers/projects ─────────────────────────────────────────────────
+let editingProjectId = null;
+
 function openManage() {
+  editingProjectId = null;
   renderManageList();
   document.getElementById('manage-overlay').style.display = 'flex';
 }
@@ -1290,9 +1298,21 @@ function renderManageList() {
         <div class="manage-cust-name">${esc(c.name)}</div>
       </div>
       <div class="manage-projects">
-        ${(c.projects||[]).map(p => `
+        ${(c.projects||[]).map(p => p.id === editingProjectId ? `
+          <div class="manage-proj">
+            <div class="manage-proj-edit">
+              <input type="text" id="proj-edit-${p.id}" value="${esc(p.name)}"
+                     autocorrect="on" autocapitalize="words"
+                     onkeydown="if(event.key==='Enter')saveProjectName('${p.id}');if(event.key==='Escape')cancelEditProject()">
+              <button class="manage-proj-btn" title="Save" onclick="saveProjectName('${p.id}')">✓</button>
+              <button class="manage-proj-btn" title="Cancel" onclick="cancelEditProject()">✕</button>
+            </div>
+          </div>
+        ` : `
           <div class="manage-proj">
             <span class="manage-proj-name">› ${esc(p.name)}</span>
+            <button class="manage-proj-btn" title="Rename" onclick="editProject('${p.id}')">✎</button>
+            <button class="manage-proj-btn danger" title="Delete" onclick="removeProject('${p.id}')">🗑</button>
           </div>
         `).join('')}
         <div class="manage-add-proj">
@@ -1320,6 +1340,44 @@ window.addProject = async function(custId) {
   if (!name || !db) return;
   inp.value = '';
   await addDoc(collection(db,'projects'), { name, customerId: custId });
+};
+
+window.editProject = function(id) {
+  editingProjectId = id;
+  renderManageList();
+  const inp = document.getElementById(`proj-edit-${id}`);
+  if (inp) { inp.focus(); inp.select(); }
+};
+
+window.cancelEditProject = function() {
+  editingProjectId = null;
+  renderManageList();
+};
+
+window.saveProjectName = async function(id) {
+  const inp  = document.getElementById(`proj-edit-${id}`);
+  const name = inp?.value.trim();
+  const proj = allProjects.find(p => p.id === id);
+  editingProjectId = null;
+  if (!name || !db || !proj || name === proj.name) { renderManageList(); return; }
+  await updateDoc(doc(db,'projects',id), { name });
+  // Keep the denormalised project name on tasks in sync
+  await Promise.all(
+    tasks.filter(t => t.projectId === id)
+         .map(t => updateDoc(doc(db,'tasks',t.id), { projectName: name }))
+  );
+};
+
+window.removeProject = async function(id) {
+  const proj = allProjects.find(p => p.id === id);
+  if (!proj || !db) return;
+  const used = tasks.filter(t => t.projectId === id).length;
+  const msg  = used
+    ? `Delete project "${proj.name}"?\n\n${used} task${used===1?'':'s'} will keep the project name but lose the link.`
+    : `Delete project "${proj.name}"?`;
+  if (!confirm(msg)) return;
+  if (editingProjectId === id) editingProjectId = null;
+  await deleteDoc(doc(db,'projects',id));
 };
 
 // ── Status indicator ──────────────────────────────────────────────────────────
