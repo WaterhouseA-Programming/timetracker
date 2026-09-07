@@ -1037,6 +1037,16 @@ async function updateProjectRate(projectId, rateOverride) {
   await updateDoc(doc(db,'projects',projectId), { rateOverride: rateOverride || null });
 }
 
+async function renameProject(projectId, name) {
+  const { doc, updateDoc } = _fs;
+  await updateDoc(doc(db,'projects',projectId), { name });
+  // Keep the denormalised project name on tasks and time entries in sync
+  await Promise.all(tasks.filter(t => t.projectId === projectId)
+    .map(t => updateDoc(doc(db,'tasks',t.id), { projectName: name })));
+  await Promise.all(entries.filter(e => e.projectId === projectId)
+    .map(e => updateDoc(doc(db,'entries',e.id), { projectName: name })));
+}
+
 async function deleteProject(id) {
   const { doc, deleteDoc } = _fs;
   await deleteDoc(doc(db,'projects',id));
@@ -1567,6 +1577,7 @@ function renderManage() {
         <div style="display:flex;width:100%;align-items:center;justify-content:space-between">
           <span class="project-name">${esc(p.name)}</span>
           <div style="display:flex;gap:5px">
+            <button class="btn btn-ghost" style="font-size:calc(10px * var(--fs,1));padding:3px 8px" onclick="openEditProjectName('${p.id}','${esc(p.name)}')" title="Rename project">✎</button>
             <button class="btn btn-ghost" style="font-size:calc(10px * var(--fs,1));padding:3px 8px" onclick="openEditRate('${p.id}','${esc(p.name)}',${p.rateOverride||0})">
               ${p.rateOverride ? sym+p.rateOverride+'/hr' : '+ rate'}
             </button>
@@ -2575,6 +2586,24 @@ async function doAddProject(custId, custName) {
   addProject(custId, custName, name, budget, rate).catch(console.error);
 }
 window.doAddProject = doAddProject;
+
+function openEditProjectName(projId, projName) {
+  showModal(`Rename Project`,
+    `<div class="form-field"><label>Project Name</label><input id="m-proj-name" type="text" value="${esc(projName)}"></div>`,
+    `<button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+     <button class="btn btn-primary" onclick="doEditProjectName('${projId}')">Save</button>`);
+  setTimeout(()=>{ const i = document.getElementById('m-proj-name'); i?.focus(); i?.select(); },50);
+}
+window.openEditProjectName = openEditProjectName;
+
+async function doEditProjectName(projId) {
+  const name = document.getElementById('m-proj-name').value.trim();
+  const proj = customers.flatMap(c => c.projects||[]).find(p => p.id === projId);
+  closeModal();
+  if (!name || !proj || name === proj.name) return;
+  await renameProject(projId, name);
+}
+window.doEditProjectName = doEditProjectName;
 
 function openEditBudget(projId, projName, current) {
   showModal(`Budget — ${projName}`,
