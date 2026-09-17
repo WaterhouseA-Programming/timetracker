@@ -540,6 +540,17 @@ ipcMain.handle('window-minimize', () => mainWindow?.minimize());
 ipcMain.handle('window-close',    () => mainWindow?.hide());
 
 // ─── App lifecycle ────────────────────────────────────────────────────────────
+// ─── Single instance ──────────────────────────────────────────────────────────
+// A second copy (e.g. auto-start at login hides the window, so the user clicks
+// the shortcut again) shares the same userData dir but cannot take the LevelDB
+// locks. IndexedDB fails to open, Firebase finds no persisted session and the
+// second window shows the sign-in screen. It would also double-track time.
+if (!app.requestSingleInstanceLock()) {
+  app.quit();
+  process.exit(0);
+}
+app.on('second-instance', () => createWindow());
+
 app.whenReady().then(() => {
   app.setAppUserModelId('com.timetracker.app');
   registerAppProtocol();
