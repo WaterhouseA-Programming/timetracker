@@ -175,6 +175,8 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
 .col-dot{width:7px;height:7px;border-radius:50%}
 .task-card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 12px;transition:border-color .15s}
 .task-card:hover{border-color:var(--border-hover)}
+.card-flash{animation:cardFlash 1.6s ease-out}
+@keyframes cardFlash{0%,30%{box-shadow:0 0 0 3px var(--accent)}100%{box-shadow:0 0 0 0 transparent}}
 .task-card-active{border-color:var(--p-teal)!important;box-shadow:0 0 0 1px #4caf9140}
 .idea-card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin-bottom:10px;transition:border-color .15s}
 .idea-card:hover{border-color:var(--border-hover)}
@@ -1390,9 +1392,9 @@ function updateTimerBanner() {
   const rows = timers.map(t => {
     const cat  = getCat(t.category);
     const proj = t.customerId === 'ideas'
-      ? `💡 <a href="#" style="color:${cat.color};text-decoration:underline" onclick="showPage('ideas',document.querySelector('[data-page=\\'ideas\\']'));return false;">${esc(t.projectName)}</a>`
+      ? `💡 <span style="color:${cat.color};text-decoration:underline">${esc(t.projectName)}</span>`
       : t.taskTitle
-        ? `${esc(t.customerName)} › ${esc(t.projectName)} — <a href="#" style="color:${cat.color};text-decoration:underline" onclick="showPage('tasks',document.querySelector('[data-page=\\'tasks\\']'));return false;">${esc(t.taskTitle)}</a>`
+        ? `${esc(t.customerName)} › ${esc(t.projectName)} — <span style="color:${cat.color};text-decoration:underline">${esc(t.taskTitle)}</span>`
         : `${esc(t.customerName)} › ${esc(t.projectName)}`;
     const cats = CATEGORIES.map(c => {
       const sel = (t.category || 'Coding') === c.id;
@@ -1403,7 +1405,7 @@ function updateTimerBanner() {
       <div class="tbr-dot running" style="background:${cat.color};box-shadow:0 0 8px ${cat.color}"></div>
       <div class="tbr-info">
         <div class="tbr-label" style="color:${cat.color}">Running</div>
-        <div class="tbr-proj">${proj}</div>
+        <div class="tbr-proj" style="cursor:pointer" title="Go to it and copy the name" onclick="jumpToTimer('${esc(t.key)}',this)">${proj}</div>
         <div class="tbr-cats">${cats}</div>
       </div>
       <div class="tbr-elapsed" data-start="${t.startTime}" data-key="${esc(t.key)}" style="color:var(--accent)">00:00</div>
@@ -1418,6 +1420,23 @@ function updateTimerBanner() {
   banner.innerHTML = rows + stopAll;
   tickElapsed(); // update immediately so there's no 1-second blank
 }
+
+// Clicking a running timer copies its name and scrolls to the card it belongs to.
+function jumpToTimer(key, el) {
+  const t = activeTimers[key]; if (!t) return;
+  const isIdea = t.customerId === 'ideas';
+  navigator.clipboard.writeText(isIdea ? t.projectName : (t.taskTitle || t.projectName)).catch(() => {});
+  const label = el?.parentElement?.querySelector('.tbr-label');
+  if (label) { label.textContent = 'Copied ✓'; setTimeout(() => { label.textContent = 'Running'; }, 1200); }
+  const page = isIdea ? 'ideas' : t.taskId ? 'tasks' : null;
+  if (!page) return;
+  showPage(page, document.querySelector(`[data-page='${page}']`));
+  const card = document.querySelector(isIdea ? `.idea-card[data-id="${t.projectId}"]` : `.task-card[data-id="${t.taskId}"]`);
+  if (!card) return;
+  card.scrollIntoView({ behavior:'smooth', block:'center' });
+  card.classList.remove('card-flash'); void card.offsetWidth; card.classList.add('card-flash');
+}
+window.jumpToTimer = jumpToTimer;
 
 function tickElapsed() {
   document.querySelectorAll('.tbr-elapsed[data-start]').forEach(el => {
@@ -2149,7 +2168,7 @@ function renderIdeas() {
   });
   el.innerHTML = sorted.map(idea => {
     const st = IDEA_STATUSES.find(s=>s.id===idea.status) || IDEA_STATUSES[0];
-    return `<div class="idea-card" style="border-left:3px solid ${st.color}">
+    return `<div class="idea-card" data-id="${idea.id}" style="border-left:3px solid ${st.color}">
       <div style="display:flex;align-items:flex-start;gap:8px">
         <div style="flex:1">
           <div style="font-size:calc(13px * var(--fs,1));font-weight:600;margin-bottom:4px">${esc(idea.title)}</div>
