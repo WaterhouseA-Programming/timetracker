@@ -178,6 +178,13 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
 .task-card-active{border-color:var(--p-teal)!important;box-shadow:0 0 0 1px #4caf9140}
 .idea-card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin-bottom:10px;transition:border-color .15s}
 .idea-card:hover{border-color:var(--border-hover)}
+.conv-toggle{display:flex;align-items:center;gap:8px;font-size:calc(12px * var(--fs,1));margin-bottom:10px;cursor:pointer}
+.conv-list{max-height:50vh;overflow-y:auto;display:flex;flex-direction:column;gap:4px}
+.conv-hdr{font-size:calc(10px * var(--fs,1));font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--muted2);margin:6px 0 2px}
+.conv-row{display:flex;align-items:baseline;gap:8px;width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text);font-family:inherit;cursor:pointer;text-align:left}
+.conv-row:hover,.conv-row:focus{border-color:var(--accent);outline:none}
+.conv-cust{font-size:calc(11px * var(--fs,1));color:var(--muted2);white-space:nowrap}
+.conv-proj{font-size:calc(12px * var(--fs,1));font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .idea-status-pill{font-size:calc(10px * var(--fs,1));font-weight:600;padding:3px 8px;border-radius:20px;white-space:nowrap;flex-shrink:0}
 .task-timer-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--p-teal);margin-right:6px;animation:pulse 1.4s ease-in-out infinite;vertical-align:middle}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
@@ -2158,6 +2165,7 @@ function renderIdeas() {
           : `<button class="task-act-btn" onclick="startTimerFromIdea('${idea.id}')">▶ Start</button>`
         }
         <button class="task-act-btn" onclick="openLogTimeIdeaModal('${idea.id}')">⏱ Log</button>
+        <button class="task-act-btn" onclick="openConvertIdeaModal('${idea.id}')" title="Convert to task">⇢ Task</button>
         <button class="task-act-btn copy-btn" data-copy="${esc(idea.notes ? idea.title+'\n\n'+idea.notes : idea.title)}" onclick="copyText(this)" title="Copy">⎘</button>
         <button class="task-act-btn" style="margin-left:auto" onclick="removeIdea('${idea.id}')">✕</button>
       </div>
@@ -2235,6 +2243,75 @@ async function removeIdea(id) {
   await deleteDoc(doc(db,'ideas',id));
 }
 window.removeIdea = removeIdea;
+
+// ── Convert idea → task ──────────────────────────────────────────────────────
+// One click on a project creates the task and removes the idea. Projects with the
+// most recent task activity float to the top so the usual target is the first row.
+function convertStartPref() { try { return localStorage.getItem('tt_convert_start') !== '0'; } catch { return true; } }
+function setConvertStartPref(on) { try { localStorage.setItem('tt_convert_start', on ? '1' : '0'); } catch {} }
+window.setConvertStartPref = setConvertStartPref;
+
+function rankedProjects() {
+  const lastUsed = {};
+  for (const t of tasks) {
+    const k = `${t.customerId}:${t.projectId}`;
+    const s = Math.max(t.statusChangedAt?.seconds||0, t.inProgressAt?.seconds||0, t.createdAt?.seconds||0);
+    if (s > (lastUsed[k]||0)) lastUsed[k] = s;
+  }
+  const all = customers.flatMap(c => (c.projects||[]).map(p => ({ c, p, key:`${c.id}:${p.id}` })));
+  const recent = all.filter(x => lastUsed[x.key]).sort((a,b) => lastUsed[b.key]-lastUsed[a.key]).slice(0,6);
+  const rest = all.filter(x => !recent.includes(x));
+  return { recent, rest };
+}
+
+function renderConvertList() {
+  const el = document.getElementById('m-conv-list'); if (!el) return;
+  const q = (document.getElementById('m-conv-q')?.value || '').trim().toLowerCase();
+  const { recent, rest } = rankedProjects();
+  const match = x => !q || `${x.c.name} ${x.p.name}`.toLowerCase().includes(q);
+  const row = x => `<button class="conv-row" onclick="doConvertIdea('${x.c.id}','${x.p.id}')"><span class="conv-cust">${esc(x.c.name)}</span><span class="conv-proj">${esc(x.p.name)}</span></button>`;
+  const r = recent.filter(match), o = rest.filter(match);
+  el.innerHTML =
+    (r.length ? `<div class="conv-hdr">Recent</div>${r.map(row).join('')}` : '') +
+    (o.length ? `<div class="conv-hdr">${r.length?'All projects':'Projects'}</div>${o.map(row).join('')}` : '') +
+    (!r.length && !o.length ? `<div style="padding:12px;color:var(--muted2);font-size:calc(12px * var(--fs,1))">No matching projects</div>` : '');
+}
+window.renderConvertList = renderConvertList;
+
+function openConvertIdeaModal(id) {
+  const idea = ideas.find(i=>i.id===id); if (!idea || !db) return;
+  if (!customers.some(c => (c.projects||[]).length)) { alert('Add a customer and project in the Projects tab first.'); return; }
+  showModal(`Convert to task — ${idea.title}`,
+    `<label class="conv-toggle"><input type="checkbox" id="m-conv-start"${convertStartPref()?' checked':''} onchange="setConvertStartPref(this.checked)"> Start now <span style="color:var(--muted2)">(In Progress + timer)</span></label>
+     <div class="form-field"><input id="m-conv-q" type="text" placeholder="Filter projects… (Enter picks the first)" oninput="renderConvertList()" onkeydown="if(event.key==='Enter'){document.querySelector('#m-conv-list .conv-row')?.click()}"></div>
+     <div id="m-conv-list" class="conv-list"></div>`,
+    `<button class="btn btn-ghost" onclick="closeModal()">Cancel</button>`);
+  _modalArgs = { ideaId: id };
+  renderConvertList();
+  setTimeout(()=>document.getElementById('m-conv-q')?.focus(),50);
+}
+window.openConvertIdeaModal = openConvertIdeaModal;
+
+async function doConvertIdea(cid, pid) {
+  const idea = ideas.find(i => i.id === _modalArgs?.ideaId); if (!idea) return;
+  const c = customers.find(x => x.id === cid);
+  const p = c && (c.projects||[]).find(x => x.id === pid);
+  if (!c || !p) return;
+  const start = document.getElementById('m-conv-start')?.checked;
+  closeModal();
+  const { collection, addDoc, doc, deleteDoc, serverTimestamp } = _fs;
+  const ref = await addDoc(collection(db,'tasks'), {
+    title: idea.title, status: start ? 'inprogress' : 'todo', priority:'normal', recurrence:'', notes: idea.notes||'',
+    customerId:c.id, customerName:c.name, projectId:p.id, projectName:p.name,
+    createdAt: serverTimestamp(),
+    ...(start ? { inProgressAt: serverTimestamp(), statusChangedAt: serverTimestamp() } : {}),
+  });
+  const ideaTimer = `ideas:${idea.id}:`;
+  if (activeTimers[ideaTimer]) await doStopTimer(ideaTimer);
+  await deleteDoc(doc(db,'ideas',idea.id));
+  if (start) doStartTimer(c, p, 'Coding', ref.id, idea.title);
+}
+window.doConvertIdea = doConvertIdea;
 
 function openLogTimeIdeaModal(id) {
   const idea = ideas.find(i=>i.id===id); if (!idea||!db) return;
