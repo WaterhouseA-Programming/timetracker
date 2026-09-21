@@ -208,6 +208,12 @@ main{padding:14px 14px 96px;max-width:900px;margin:0 auto}
 .proj-chip>span{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .proj-chip-cust{font-size:calc(10px * var(--fs,1));color:var(--text2)}
 .proj-chip-proj{font-size:calc(12px * var(--fs,1));font-weight:600}
+.conv-toggle{display:flex;align-items:center;gap:8px;font-size:calc(13px * var(--fs,1));margin:4px 0 12px;cursor:pointer}
+.conv-toggle input{width:18px;height:18px;accent-color:var(--accent)}
+.conv-hdr{font-size:calc(10px * var(--fs,1));font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--text2);margin:8px 0 4px}
+.conv-row{display:flex;flex-direction:column;align-items:flex-start;gap:1px;width:100%;padding:10px 12px;margin-bottom:6px;border:1px solid var(--border);border-radius:10px;background:var(--surface2);color:var(--text);font-family:inherit;cursor:pointer;text-align:left}
+.conv-row:active{border-color:var(--accent)}
+.conv-row>span{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .proj-chip.active{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
 .proj-chip.active .proj-chip-cust{color:color-mix(in srgb, var(--on-accent) 75%, transparent)}
 .proj-summary{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;font-size:calc(13px * var(--fs,1))}
@@ -560,6 +566,22 @@ main{padding:14px 14px 96px;max-width:900px;margin:0 auto}
       </div>
     </div>
     <div id="ideas-list" style="flex:1;overflow-y:auto;padding:0 18px 18px"></div>
+  </div>
+</div>
+
+<!-- Convert idea → task -->
+<div class="overlay" id="conv-overlay" style="display:none" onclick="closeConvertIdea(event)">
+  <div class="modal modal-tall" onclick="event.stopPropagation()">
+    <div class="modal-handle"></div>
+    <div class="modal-hdr">
+      <h3 id="conv-title" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Convert to task</h3>
+      <button class="icon-btn" style="width:28px;height:28px;font-size:calc(13px * var(--fs,1))" onclick="closeConvertIdea()">✕</button>
+    </div>
+    <div style="padding:0 18px">
+      <label class="conv-toggle"><input type="checkbox" id="m-conv-start" onchange="setConvertStartPref(this.checked)"> Start now <span style="color:var(--text2)">(In Progress)</span></label>
+      <div class="field" style="margin-bottom:8px"><input type="text" id="m-conv-q" placeholder="Filter projects…" oninput="renderConvertList()"></div>
+    </div>
+    <div id="m-conv-list" style="flex:1;overflow-y:auto;padding:0 18px 18px"></div>
   </div>
 </div>
 
@@ -1674,6 +1696,7 @@ function renderIdeas() {
       <div style="display:flex;gap:6px">
         <button onclick="openEditIdeaForm('${idea.id}')" style="flex:1;padding:6px;border-radius:7px;border:1px solid var(--border);background:var(--surface3);color:var(--text);font-size:calc(11px * var(--fs,1));font-weight:600;cursor:pointer">✎ Edit</button>
         <button onclick="cycleIdeaStatus('${idea.id}','${idea.status}')" style="flex:1;padding:6px;border-radius:7px;border:1px solid var(--border);background:var(--surface3);color:var(--text);font-size:calc(11px * var(--fs,1));font-weight:600;cursor:pointer">→ Next</button>
+        <button onclick="openConvertIdea('${idea.id}')" style="flex:1;padding:6px;border-radius:7px;border:1px solid var(--accent);background:var(--surface3);color:var(--accent);font-size:calc(11px * var(--fs,1));font-weight:600;cursor:pointer">⇢ Task</button>
         <button onclick="copyText(this)" data-copy="${esc(idea.notes ? idea.title+'\n\n'+idea.notes : idea.title)}" title="Copy" style="padding:6px 10px;border-radius:7px;border:1px solid var(--border);background:var(--surface3);color:var(--text);font-size:calc(11px * var(--fs,1));cursor:pointer">⎘</button>
         <button onclick="removeIdea('${idea.id}')" style="padding:6px 10px;border-radius:7px;border:1px solid var(--border);background:var(--surface3);color:var(--text2);font-size:calc(11px * var(--fs,1));cursor:pointer">✕</button>
       </div>
@@ -1728,6 +1751,71 @@ window.saveIdea = async function() {
   } else {
     await addDoc(collection(db,'ideas'), { title, notes, status, createdAt: serverTimestamp() });
   }
+};
+
+// ── Convert idea → task ──────────────────────────────────────────────────────
+// One tap on a project creates the task and removes the idea. Projects with the
+// most recent task activity float to the top so the usual target is the first row.
+let convertingIdeaId = null;
+function convertStartPref() { try { return localStorage.getItem('tt_convert_start') !== '0'; } catch { return true; } }
+window.setConvertStartPref = function(on) { try { localStorage.setItem('tt_convert_start', on ? '1' : '0'); } catch {} };
+
+function rankedProjects() {
+  const lastUsed = {};
+  for (const t of tasks) {
+    const k = `${t.customerId}:${t.projectId}`;
+    const s = Math.max(t.statusChangedAt?.seconds||0, t.inProgressAt?.seconds||0, t.createdAt?.seconds||0);
+    if (s > (lastUsed[k]||0)) lastUsed[k] = s;
+  }
+  const all = customers.flatMap(c => allProjects.filter(p => p.customerId === c.id).map(p => ({ c, p, key:`${c.id}:${p.id}` })));
+  const recent = all.filter(x => lastUsed[x.key]).sort((a,b) => lastUsed[b.key]-lastUsed[a.key]).slice(0,6);
+  const rest = all.filter(x => !recent.includes(x));
+  return { recent, rest };
+}
+
+window.renderConvertList = function() {
+  const el = document.getElementById('m-conv-list'); if (!el) return;
+  const q = document.getElementById('m-conv-q').value.trim().toLowerCase();
+  const { recent, rest } = rankedProjects();
+  const match = x => !q || `${x.c.name} ${x.p.name}`.toLowerCase().includes(q);
+  const row = x => `<button class="conv-row" onclick="doConvertIdea('${x.c.id}','${x.p.id}')"><span class="proj-chip-cust">${esc(x.c.name)}</span><span class="proj-chip-proj">${esc(x.p.name)}</span></button>`;
+  const r = recent.filter(match), o = rest.filter(match);
+  el.innerHTML =
+    (r.length ? `<div class="conv-hdr">Recent</div>${r.map(row).join('')}` : '') +
+    (o.length ? `<div class="conv-hdr">${r.length?'All projects':'Projects'}</div>${o.map(row).join('')}` : '') +
+    (!r.length && !o.length ? `<div style="padding:12px 0;color:var(--text2);font-size:calc(13px * var(--fs,1))">No matching projects</div>` : '');
+};
+
+window.openConvertIdea = function(id) {
+  const idea = ideas.find(i => i.id === id); if (!idea) return;
+  if (!allProjects.length) { alert('Add a customer and project first.'); return; }
+  convertingIdeaId = id;
+  document.getElementById('conv-title').textContent = `Convert: ${idea.title}`;
+  document.getElementById('m-conv-start').checked = convertStartPref();
+  document.getElementById('m-conv-q').value = '';
+  window.renderConvertList();
+  document.getElementById('conv-overlay').style.display = 'flex';
+};
+window.closeConvertIdea = function(e) {
+  if (e && e.target !== document.getElementById('conv-overlay')) return;
+  document.getElementById('conv-overlay').style.display = 'none';
+};
+
+window.doConvertIdea = async function(cid, pid) {
+  const idea = ideas.find(i => i.id === convertingIdeaId); if (!idea) return;
+  const c = customers.find(x => x.id === cid);
+  const p = allProjects.find(x => x.id === pid);
+  if (!c || !p) return;
+  const start = document.getElementById('m-conv-start').checked;
+  document.getElementById('conv-overlay').style.display = 'none';
+  await addDoc(collection(db,'tasks'), {
+    title: idea.title, status: start ? 'inprogress' : 'todo', priority:'normal', recurrence:'', notes: idea.notes||'',
+    customerId:c.id, customerName:c.name, projectId:p.id, projectName:p.name,
+    createdAt: serverTimestamp(),
+    ...(start ? { inProgressAt: serverTimestamp(), statusChangedAt: serverTimestamp() } : {}),
+  });
+  await deleteDoc(doc(db,'ideas',idea.id));
+  convertingIdeaId = null;
 };
 
 window.cycleIdeaStatus = async function(id, current) {
