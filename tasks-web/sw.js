@@ -1,4 +1,4 @@
-const CACHE = 'tt-tasks-v33';
+const CACHE = 'tt-tasks-v34';
 // Use self.location so paths work whether served from / or a subpath (e.g. GitHub Pages)
 const BASE  = self.location.pathname.replace(/sw\.js$/, '');
 const SHELL = [
@@ -43,4 +43,25 @@ self.addEventListener('fetch', e => {
       return res;
     }))
   );
+});
+
+// ── Watch alerts (Web Push from the tt-push Worker) ──
+self.addEventListener('push', e => {
+  let msg = {};
+  try { msg = e.data ? e.data.json() : {}; } catch { msg = { body: e.data && e.data.text() }; }
+  e.waitUntil(self.registration.showNotification(msg.title || '💡 Added from watch', {
+    body: msg.body || '',
+    icon: BASE + 'icon.svg',
+    badge: BASE + 'icon.svg',
+    tag: 'watch-' + Date.now(),
+  }));
+});
+
+self.addEventListener('notificationclick', e => {
+  e.notification.close();
+  e.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
+    const client = list.find(c => c.url.startsWith(self.registration.scope));
+    if (client) { client.postMessage('open-ideas'); return client.focus(); }
+    return self.clients.openWindow(BASE + '#ideas');
+  }));
 });

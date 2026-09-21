@@ -1,0 +1,15 @@
+{
+  "name": "tt-push",
+  "main": "src/index.js",
+  "compatibility_date": "2026-09-01",
+  "kv_namespaces": [
+    { "binding": "SUBS", "id": "c59ddefdf1fc4918b192d12190e6a936" }
+  ],
+  "vars": {
+    "FIREBASE_PROJECT_ID": "timetracker-495e9",
+    "ALLOWED_ORIGIN": "https://waterhousea-programming.github.io",
+    "VAPID_SUBJECT": "mailto:andrew@andrewwaterhouse.com",
+    "VAPID_PUBLIC_KEY": "BPt8dc_PMVdvoxVCDuOZQCrl-Qr4Fd22BRhPKxJ4PVr7zkSSS_-C58sAtiT3zY29Jz4jLEBbKcnWivA8rh_e-ps"
+  }
+  // VAPID_PRIVATE_KEY is a secret: `npx wrangler secret put VAPID_PRIVATE_KEY`
+}

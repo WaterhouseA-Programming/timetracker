@@ -1,0 +1,16 @@
+{
+  "name": "tt-push",
+  "version": "1.0.0",
+  "scripts": {
+    "deploy": "wrangler deploy"
+  },
+  "type": "module",
+  "dependencies": {
+    "@block65/webcrypto-web-push": "^2.0.0",
+    "jose": "^6.2.12"
+  },
+  "devDependencies": {
+    "wrangler": "^4.136.1"
+  },
+  "private": true
+}
