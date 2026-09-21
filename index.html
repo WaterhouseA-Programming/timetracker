@@ -382,6 +382,8 @@ main{padding:14px 14px 96px;max-width:900px;margin:0 auto}
         <button class="notif-menu-item" onclick="pauseNotifications('tomorrow')">Pause until tomorrow</button>
         <div class="notif-menu-sep" id="notif-menu-sep" style="display:none"></div>
         <button class="notif-menu-item resume" id="notif-resume" onclick="resumeNotifications()" style="display:none">Resume notifications</button>
+        <div class="notif-menu-sep"></div>
+        <button class="notif-menu-item" id="watch-push-btn" onclick="toggleWatchPush()">⌚ Watch alerts: off</button>
       </div>
     </div>
     <button class="icon-btn" onclick="openDrawer()" title="Settings">⚙</button>
@@ -1583,6 +1585,68 @@ renderNotifBtn();
 window.pauseNotifications  = pauseNotifications;
 window.resumeNotifications = resumeNotifications;
 window.toggleNotifMenu     = toggleNotifMenu;
+
+// ── Watch alerts (Web Push) ─────────────────────────────────────────────────
+// The Siri / Apple Watch Shortcut calls the tt-push Worker after it writes an idea;
+// the Worker pushes to every device subscribed here. iOS only allows this for the
+// app installed to the Home Screen.
+const PUSH_URL = 'https://tt-push.andrew-cfb.workers.dev';
+const VAPID_PUBLIC_KEY = 'BPt8dc_PMVdvoxVCDuOZQCrl-Qr4Fd22BRhPKxJ4PVr7zkSSS_-C58sAtiT3zY29Jz4jLEBbKcnWivA8rh_e-ps';
+function b64uToBytes(s) {
+  const b = atob(s.replace(/-/g, '+').replace(/_/g, '/') + '='.repeat((4 - s.length % 4) % 4));
+  return Uint8Array.from(b, c => c.charCodeAt(0));
+}
+async function pushCall(path, body) {
+  const token = await auth?.currentUser?.getIdToken();
+  if (!token) throw new Error('Sign in first');
+  const res = await fetch(PUSH_URL + path, { method:'POST', headers:{ 'Authorization':`Bearer ${token}`, 'Content-Type':'application/json' }, body: JSON.stringify(body) });
+  if (!res.ok) throw new Error(`Push server said ${res.status}`);
+}
+async function currentPushSub() {
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return null;
+  const reg = await navigator.serviceWorker.ready;
+  return reg.pushManager.getSubscription();
+}
+async function renderWatchPushBtn() {
+  const btn = document.getElementById('watch-push-btn'); if (!btn) return;
+  const on = !!(await currentPushSub().catch(() => null)) && window.Notification?.permission === 'granted';
+  btn.textContent = on ? '⌚ Watch alerts: on (tap to turn off)' : '⌚ Watch alerts: off';
+}
+window.toggleWatchPush = async function() {
+  const btn = document.getElementById('watch-push-btn');
+  try {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+      alert('Push needs the app installed: in Safari tap Share → Add to Home Screen, then open it from there.');
+      return;
+    }
+    const existing = await currentPushSub();
+    if (existing && Notification.permission === 'granted') {
+      await pushCall('/unsubscribe', { endpoint: existing.endpoint }).catch(() => {});
+      await existing.unsubscribe();
+    } else {
+      if (btn) btn.textContent = '⌚ Turning on…';
+      if (await Notification.requestPermission() !== 'granted') { alert('Notifications are blocked for this app. Allow them in Settings → Notifications.'); return; }
+      const reg = await navigator.serviceWorker.ready;
+      const sub = existing || await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64uToBytes(VAPID_PUBLIC_KEY) });
+      await pushCall('/subscribe', sub.toJSON());
+    }
+  } catch (e) {
+    alert('Could not change watch alerts: ' + e.message);
+  } finally {
+    renderWatchPushBtn();
+  }
+};
+renderWatchPushBtn();
+
+// Tapping a watch alert opens the Ideas panel (see sw.js notificationclick)
+function openIdeasFromAlert() {
+  if (location.hash !== '#ideas') return;
+  history.replaceState(null, '', location.pathname + location.search);
+  window.openIdeasPanel();
+}
+navigator.serviceWorker?.addEventListener('message', e => { if (e.data === 'open-ideas') window.openIdeasPanel(); });
+window.addEventListener('hashchange', openIdeasFromAlert);
+setTimeout(openIdeasFromAlert, 0);
 
 // ── Notifications ─────────────────────────────────────────────────────────────
 (function initNotifications() {
