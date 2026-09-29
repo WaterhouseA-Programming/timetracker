@@ -118,6 +118,34 @@ main{padding:14px 14px 96px;max-width:900px;margin:0 auto}
 .toolbar select{flex:1;min-width:0;padding:8px 10px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-family:'Plus Jakarta Sans',sans-serif;font-size:calc(12px * var(--fs,1));outline:none;-webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' fill='none'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23888' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;padding-right:28px}
 .toolbar select:focus{border-color:var(--accent)}
 
+/* ── Timeline (delivered work over time) ── */
+.tl-seg{display:flex;border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden;flex-shrink:0}
+.tl-seg button{background:var(--surface);color:var(--muted);border:0;padding:8px 12px;font-family:'Plus Jakarta Sans',sans-serif;font-size:calc(12px * var(--fs,1));cursor:pointer}
+.tl-seg button.on{background:color-mix(in srgb, var(--accent) 18%, transparent);color:var(--accent);font-weight:600}
+.tl-wrap{grid-column:1/-1;min-width:0}
+.tl-head{display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap}
+.tl-title{font-weight:700;font-size:calc(14px * var(--fs,1))}
+.tl-sub{color:var(--muted);font-size:calc(11px * var(--fs,1))}
+.tl-head select{margin-left:auto;padding:6px 10px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-family:'Plus Jakarta Sans',sans-serif;font-size:calc(12px * var(--fs,1));outline:none}
+.tl-scroll{overflow-x:auto;padding-bottom:6px}
+.tl-grid{display:grid;grid-template-columns:minmax(120px,170px) repeat(var(--n),minmax(46px,1fr)) 40px;min-width:calc(170px + var(--n) * 46px + 40px)}
+.tl-lbl{position:sticky;left:0;z-index:1;background:var(--bg);padding:6px 8px 6px 0;font-size:calc(12px * var(--fs,1));white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;align-self:center}
+.tl-lbl:hover,.tl-lbl.sel{color:var(--accent)}
+.tl-cust{grid-column:1/-1;font-size:calc(11px * var(--fs,1));font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);padding:14px 0 4px;border-bottom:1px solid var(--border);margin-bottom:2px}
+.tl-cell{margin:2px;border-radius:5px;min-height:30px;display:flex;align-items:center;justify-content:center;font-size:calc(11px * var(--fs,1));font-weight:600;color:var(--text);background:var(--surface);cursor:pointer}
+.tl-cell.sel,.tl-bcol.sel .tl-bar{outline:2px solid var(--accent)}
+.tl-total{text-align:right;color:var(--muted);font-size:calc(11px * var(--fs,1));align-self:center;padding-right:4px}
+.tl-bcol{display:flex;flex-direction:column;justify-content:flex-end;align-items:center;height:80px;gap:2px;cursor:pointer;font-size:calc(10px * var(--fs,1));color:var(--muted)}
+.tl-bar{width:60%;background:var(--p-green);border-radius:3px 3px 0 0;min-height:2px}
+.tl-mhdr{text-align:center;font-size:calc(10px * var(--fs,1));color:var(--muted);padding:4px 0;cursor:pointer;line-height:1.3}
+.tl-mhdr:hover,.tl-mhdr.sel{color:var(--accent)}
+.tl-detail{margin-top:14px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);padding:12px 14px}
+.tl-detail-h{font-weight:700;font-size:calc(12px * var(--fs,1));margin-bottom:6px}
+.tl-item{display:flex;gap:10px;padding:6px 0;border-top:1px solid var(--border);font-size:calc(12px * var(--fs,1));cursor:pointer;flex-wrap:wrap}
+.tl-item:hover{color:var(--accent)}
+.tl-date{color:var(--muted);flex-shrink:0;min-width:84px}
+.tl-proj{color:var(--muted);margin-left:auto;text-align:right}
+
 /* ── Columns ── */
 .cols{display:flex;flex-direction:column;gap:20px}
 @media(min-width:640px){.cols{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:14px}}
@@ -440,6 +468,10 @@ main{padding:14px 14px 96px;max-width:900px;margin:0 auto}
     <div class="toolbar">
       <select id="f-cust" onchange="onFilterChange()"><option value="">All Customers</option></select>
       <select id="f-proj" onchange="renderBoard()"><option value="">All Projects</option></select>
+      <div class="tl-seg" id="view-seg">
+        <button data-v="board" onclick="setTaskView('board')">Board</button>
+        <button data-v="timeline" onclick="setTaskView('timeline')">Timeline</button>
+      </div>
     </div>
     <div class="quick-bar">
       <button class="quick-btn quick-btn-manage" onclick="openManagePanel()">🏢 Customers &amp; Projects</button>
@@ -953,6 +985,91 @@ function populateProjFilter() {
 
 window.onFilterChange = function() { populateProjFilter(); renderBoard(); };
 
+// ── Timeline: delivered work by project over time ─────────────────────────────
+let taskView = (() => { try { return localStorage.getItem('tt_task_view') === 'timeline' ? 'timeline' : 'board'; } catch { return 'board'; } })();
+let tlRange  = (() => { try { const v = localStorage.getItem('tt_tl_range'); return ['6','12','all'].includes(v) ? v : '12'; } catch { return '12'; } })();
+let tlSel    = null; // {p: projectKey|null, m: 'YYYY-MM'|null}
+window.setTaskView = v => { taskView = v==='timeline' ? 'timeline' : 'board'; try { localStorage.setItem('tt_task_view', taskView); } catch {} renderBoard(); };
+window.setTlRange  = v => { tlRange = v; tlSel = null; try { localStorage.setItem('tt_tl_range', v); } catch {} renderBoard(); };
+window.tlPick = (p, m) => { tlSel = (tlSel && tlSel.p===p && tlSel.m===m) ? null : {p, m}; renderBoard(); };
+
+function tlDoneMs(t) { return (t.completedAt?.seconds ?? t.statusChangedAt?.seconds ?? t.createdAt?.seconds ?? Date.now()/1000) * 1000; }
+function tlMonthKey(ms) { const d = new Date(ms); return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0'); }
+
+function timelineHtml(filtered, editFn) {
+  const done = filtered.filter(t=>t.status==='done').map(t=>({t, ms: tlDoneMs(t)}));
+  const now = new Date();
+  let first = tlRange==='all'
+    ? (done.length ? new Date(Math.min(...done.map(d=>d.ms))) : now)
+    : new Date(now.getFullYear(), now.getMonth() - (+tlRange - 1), 1);
+  first = new Date(first.getFullYear(), first.getMonth(), 1);
+  const months = [];
+  for (let d = new Date(first); d <= now; d = new Date(d.getFullYear(), d.getMonth()+1, 1))
+    months.push({key: tlMonthKey(d), label: d.toLocaleDateString(undefined,{month:'short'}), yr: String(d.getFullYear()).slice(2)});
+  const idx = new Map(months.map((m,i)=>[m.key,i]));
+  const inRange = done.filter(d=>idx.has(tlMonthKey(d.ms)));
+  const n = months.length;
+
+  const monthTot = new Array(n).fill(0);
+  const projs = new Map();
+  for (const d of inRange) {
+    const pk = d.t.projectId || 'none', mi = idx.get(tlMonthKey(d.ms));
+    let p = projs.get(pk);
+    if (!p) { p = {pk, cust: d.t.customerName||'No customer', name: d.t.projectName||'No project', cells: new Array(n).fill(0), total: 0}; projs.set(pk, p); }
+    p.cells[mi]++; p.total++; monthTot[mi]++;
+  }
+
+  const rangeSel = `<select onchange="setTlRange(this.value)">${[['6','Last 6 months'],['12','Last 12 months'],['all','All time']].map(([v,l])=>`<option value="${v}"${v===tlRange?' selected':''}>${l}</option>`).join('')}</select>`;
+  const head = `<div class="tl-head"><span class="tl-title">Delivered</span><span class="tl-sub">${inRange.length} task${inRange.length===1?'':'s'} · ${projs.size} project${projs.size===1?'':'s'}</span>${rangeSel}</div>`;
+  if (!inRange.length) return head + `<div class="empty"><div class="empty-icon">📭</div>No completed tasks in this range</div>`;
+
+  const maxMonth = Math.max(1, ...monthTot);
+  const maxCell  = Math.max(1, ...[...projs.values()].flatMap(p=>p.cells));
+  const byCust = new Map();
+  for (const p of projs.values()) {
+    if (!byCust.has(p.cust)) byCust.set(p.cust, {name: p.cust, projs: [], total: 0});
+    const c = byCust.get(p.cust); c.projs.push(p); c.total += p.total;
+  }
+  const custs = [...byCust.values()].sort((a,b)=>b.total-a.total);
+  custs.forEach(c=>c.projs.sort((a,b)=>b.total-a.total));
+
+  const monSel = m => tlSel && tlSel.p===null && tlSel.m===m;
+  let g = `<div></div>` + months.map((m,i)=>`<div class="tl-bcol${monSel(m.key)?' sel':''}" title="${monthTot[i]} completed" onclick="tlPick(null,'${m.key}')">${monthTot[i]||''}<div class="tl-bar" style="height:${monthTot[i]?Math.max(3,Math.round(56*monthTot[i]/maxMonth)):0}px"></div></div>`).join('') + `<div></div>`;
+  g += `<div></div>` + months.map(m=>`<div class="tl-mhdr${monSel(m.key)?' sel':''}" onclick="tlPick(null,'${m.key}')">${m.label}<br>'${m.yr}</div>`).join('') + `<div class="tl-mhdr" style="cursor:default">Total</div>`;
+  for (const c of custs) {
+    g += `<div class="tl-cust">${esc(c.name)} · ${c.total}</div>`;
+    for (const p of c.projs) {
+      g += `<div class="tl-lbl${tlSel&&tlSel.p===p.pk&&tlSel.m===null?' sel':''}" title="${esc(p.name)}" onclick="tlPick('${esc(p.pk)}',null)">${esc(p.name)}</div>`;
+      g += p.cells.map((v,i)=>{
+        const sel = tlSel && tlSel.p===p.pk && tlSel.m===months[i].key;
+        return v ? `<div class="tl-cell${sel?' sel':''}" style="background:color-mix(in srgb, var(--p-green) ${12+Math.round(38*v/maxCell)}%, transparent)" onclick="tlPick('${esc(p.pk)}','${months[i].key}')">${v}</div>` : `<div class="tl-cell" style="opacity:.35;cursor:default"></div>`;
+      }).join('');
+      g += `<div class="tl-total">${p.total}</div>`;
+    }
+  }
+
+  let detail = '';
+  if (tlSel) {
+    const items = inRange.filter(d => (tlSel.p===null || (d.t.projectId||'none')===tlSel.p) && (tlSel.m===null || tlMonthKey(d.ms)===tlSel.m));
+    const groups = new Map();
+    for (const d of items) {
+      const k = (d.t.title||'').trim().toLowerCase();
+      if (!groups.has(k)) groups.set(k, []);
+      groups.get(k).push(d);
+    }
+    const rows = [...groups.values()].map(a=>a.sort((x,y)=>y.ms-x.ms)).sort((a,b)=>b[0].ms-a[0].ms);
+    const fmt = ms => new Date(ms).toLocaleDateString(undefined,{day:'numeric',month:'short',year:'numeric'});
+    const proj = tlSel.p!==null ? projs.get(tlSel.p) : null;
+    const mon  = tlSel.m!==null ? new Date(+tlSel.m.slice(0,4), +tlSel.m.slice(5)-1, 1).toLocaleDateString(undefined,{month:'long',year:'numeric'}) : '';
+    const title = [proj?esc(proj.name):'', mon].filter(Boolean).join(' · ') || 'All';
+    detail = `<div class="tl-detail"><div class="tl-detail-h">${title} · ${items.length} completed</div>` + rows.map(a=>{
+      const d = a[0];
+      return `<div class="tl-item" title="${a.map(x=>fmt(x.ms)).join(', ')}" onclick="${editFn}('${esc(d.t.id)}')"><span class="tl-date">${fmt(d.ms)}</span><span>${esc(d.t.title)}${a.length>1?` ×${a.length}`:''}</span>${proj?'':`<span class="tl-proj">${esc(d.t.projectName||'')}</span>`}</div>`;
+    }).join('') + `</div>`;
+  }
+  return head + `<div class="tl-scroll"><div class="tl-grid" style="--n:${n}">${g}</div></div>` + detail;
+}
+
 // ── Render board ──────────────────────────────────────────────────────────────
 function renderBoard() {
   const cc = document.getElementById('f-cust')?.value || '';
@@ -965,8 +1082,16 @@ function renderBoard() {
   filtered = filtered.filter(t => !isScheduledAhead(t));
   scheduleRecurrenceWake(scheduled[0]?.dueAt);
 
+  document.querySelectorAll('#view-seg button').forEach(b => b.classList.toggle('on', b.dataset.v === taskView));
+  const colsEl = document.getElementById('cols');
+  if (taskView === 'timeline') {
+    colsEl.innerHTML = `<div class="tl-wrap">${timelineHtml(filtered, 'openEditModalById')}</div>`;
+    setStatus(true);
+    return;
+  }
+
   const noProjects = !allProjects.length;
-  document.getElementById('cols').innerHTML = STATUSES.map(s => {
+  colsEl.innerHTML = STATUSES.map(s => {
     let col = filtered.filter(t => t.status === s.id);
     const total = col.length;
     if (s.id === 'done') {
