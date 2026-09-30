@@ -119,10 +119,6 @@ main{padding:14px 14px 96px;max-width:900px;margin:0 auto}
 .toolbar select:focus{border-color:var(--accent)}
 
 /* ── Timeline (delivered work over time) ── */
-.tl-seg{display:flex;border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden;flex-shrink:0}
-.tl-seg button{background:var(--surface);color:var(--muted);border:0;padding:8px 12px;font-family:'Plus Jakarta Sans',sans-serif;font-size:calc(12px * var(--fs,1));cursor:pointer}
-.tl-seg button.on{background:color-mix(in srgb, var(--accent) 18%, transparent);color:var(--accent);font-weight:600}
-.tl-wrap{grid-column:1/-1;min-width:0}
 .tl-head{display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap}
 .tl-title{font-weight:700;font-size:calc(14px * var(--fs,1))}
 .tl-sub{color:var(--muted);font-size:calc(11px * var(--fs,1))}
@@ -145,6 +141,17 @@ main{padding:14px 14px 96px;max-width:900px;margin:0 auto}
 .tl-item:hover{color:var(--accent)}
 .tl-date{color:var(--muted);flex-shrink:0;min-width:84px}
 .tl-proj{color:var(--muted);margin-left:auto;text-align:right}
+.tl-sp{display:none}
+.modal-report{max-width:900px;max-height:92dvh;display:flex;flex-direction:column;overflow:hidden}
+#delivered-body .tl-lbl{background:var(--surface)}
+@media(max-width:640px){
+  .tl-grid{grid-template-columns:0 repeat(var(--n),minmax(24px,1fr)) 30px;min-width:calc(var(--n) * 24px + 30px)}
+  .tl-lbl{grid-column:1/-1;padding:8px 0 0}
+  .tl-sp{display:block}
+  .tl-cell{margin:1px;min-height:26px;border-radius:4px}
+  .tl-mhdr{font-size:calc(9px * var(--fs,1))}
+  .tl-bcol{height:64px}
+}
 
 /* ── Columns ── */
 .cols{display:flex;flex-direction:column;gap:20px}
@@ -301,7 +308,7 @@ main{padding:14px 14px 96px;max-width:900px;margin:0 auto}
 .fs-btn.active{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
 
 /* ── Quick-action bar (visible below toolbar) ── */
-.quick-bar{display:flex;gap:8px;margin-bottom:14px}
+.quick-bar{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
 .quick-btn{display:flex;align-items:center;justify-content:center;gap:6px;padding:8px 12px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);font-family:'Plus Jakarta Sans',sans-serif;font-size:calc(11px * var(--fs,1));font-weight:600;color:var(--text2);cursor:pointer;transition:all .15s;white-space:nowrap}
 .quick-btn:hover{background:var(--surface2);color:var(--text);border-color:var(--brand)}
 .quick-btn:active{transform:scale(.96)}
@@ -468,15 +475,12 @@ main{padding:14px 14px 96px;max-width:900px;margin:0 auto}
     <div class="toolbar">
       <select id="f-cust" onchange="onFilterChange()"><option value="">All Customers</option></select>
       <select id="f-proj" onchange="renderBoard()"><option value="">All Projects</option></select>
-      <div class="tl-seg" id="view-seg">
-        <button data-v="board" onclick="setTaskView('board')">Board</button>
-        <button data-v="timeline" onclick="setTaskView('timeline')">Timeline</button>
-      </div>
     </div>
     <div class="quick-bar">
       <button class="quick-btn quick-btn-manage" onclick="openManagePanel()">🏢 Customers &amp; Projects</button>
       <button class="quick-btn quick-btn-ideas" onclick="openIdeasPanel()">💡 Ideas</button>
       <button class="quick-btn quick-btn-proposals" onclick="openProposalsPanel()">📋 Opportunities</button>
+      <button class="quick-btn quick-btn-delivered" onclick="openDeliveredPanel()">▦ Delivered</button>
       <button class="quick-btn quick-btn-settings" onclick="openDrawer()">⚙ Settings</button>
     </div>
     <div class="cols" id="cols"></div>
@@ -499,6 +503,21 @@ main{padding:14px 14px 96px;max-width:900px;margin:0 auto}
 </div>
 
 <!-- Add / Edit task modal -->
+<!-- Delivered report panel -->
+<div class="overlay" id="delivered-overlay" style="display:none" onclick="closeDeliveredPanel(event)">
+  <div class="modal modal-report" onclick="event.stopPropagation()">
+    <div class="modal-handle"></div>
+    <div class="modal-hdr">
+      <h3>▦ Delivered</h3>
+      <button class="icon-btn" style="width:28px;height:28px;font-size:calc(13px * var(--fs,1))" onclick="closeDeliveredPanel()">✕</button>
+    </div>
+    <div class="toolbar" style="margin-bottom:10px">
+      <select id="tl-f-cust" onchange="tlCustChange()"><option value="">All Customers</option></select>
+    </div>
+    <div id="delivered-body" style="flex:1;overflow-y:auto;min-height:0"></div>
+  </div>
+</div>
+
 <div class="overlay" id="modal" style="display:none" onclick="closeModal(event)">
   <div class="modal" onclick="event.stopPropagation()">
     <div class="modal-handle"></div>
@@ -986,12 +1005,10 @@ function populateProjFilter() {
 window.onFilterChange = function() { populateProjFilter(); renderBoard(); };
 
 // ── Timeline: delivered work by project over time ─────────────────────────────
-let taskView = (() => { try { return localStorage.getItem('tt_task_view') === 'timeline' ? 'timeline' : 'board'; } catch { return 'board'; } })();
 let tlRange  = (() => { try { const v = localStorage.getItem('tt_tl_range'); return ['6','12','all'].includes(v) ? v : '12'; } catch { return '12'; } })();
 let tlSel    = null; // {p: projectKey|null, m: 'YYYY-MM'|null}
-window.setTaskView = v => { taskView = v==='timeline' ? 'timeline' : 'board'; try { localStorage.setItem('tt_task_view', taskView); } catch {} renderBoard(); };
-window.setTlRange  = v => { tlRange = v; tlSel = null; try { localStorage.setItem('tt_tl_range', v); } catch {} renderBoard(); };
-window.tlPick = (p, m) => { tlSel = (tlSel && tlSel.p===p && tlSel.m===m) ? null : {p, m}; renderBoard(); };
+window.setTlRange  = v => { tlRange = v; tlSel = null; try { localStorage.setItem('tt_tl_range', v); } catch {} document.querySelector('.tl-scroll')?.remove(); renderDelivered(); };
+window.tlPick = (p, m) => { tlSel = (tlSel && tlSel.p===p && tlSel.m===m) ? null : {p, m}; renderDelivered(); };
 
 function tlDoneMs(t) { return (t.completedAt?.seconds ?? t.statusChangedAt?.seconds ?? t.createdAt?.seconds ?? Date.now()/1000) * 1000; }
 function tlMonthKey(ms) { const d = new Date(ms); return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0'); }
@@ -1039,7 +1056,7 @@ function timelineHtml(filtered, editFn) {
   for (const c of custs) {
     g += `<div class="tl-cust">${esc(c.name)} · ${c.total}</div>`;
     for (const p of c.projs) {
-      g += `<div class="tl-lbl${tlSel&&tlSel.p===p.pk&&tlSel.m===null?' sel':''}" title="${esc(p.name)}" onclick="tlPick('${esc(p.pk)}',null)">${esc(p.name)}</div>`;
+      g += `<div class="tl-lbl${tlSel&&tlSel.p===p.pk&&tlSel.m===null?' sel':''}" title="${esc(p.name)}" onclick="tlPick('${esc(p.pk)}',null)">${esc(p.name)}</div><div class="tl-sp"></div>`;
       g += p.cells.map((v,i)=>{
         const sel = tlSel && tlSel.p===p.pk && tlSel.m===months[i].key;
         return v ? `<div class="tl-cell${sel?' sel':''}" style="background:color-mix(in srgb, var(--p-green) ${12+Math.round(38*v/maxCell)}%, transparent)" onclick="tlPick('${esc(p.pk)}','${months[i].key}')">${v}</div>` : `<div class="tl-cell" style="opacity:.35;cursor:default"></div>`;
@@ -1070,6 +1087,35 @@ function timelineHtml(filtered, editFn) {
   return head + `<div class="tl-scroll"><div class="tl-grid" style="--n:${n}">${g}</div></div>` + detail;
 }
 
+// Re-rendering replaces the scroller, so carry its position across; first paint shows the latest month
+window.tlCustChange = () => { tlSel = null; document.querySelector('.tl-scroll')?.remove(); renderDelivered(); };
+function renderTimelineInto(el, list, editFn) {
+  const prev = el.querySelector('.tl-scroll');
+  const left = prev ? prev.scrollLeft : null;
+  el.innerHTML = timelineHtml(list, editFn);
+  const sc = el.querySelector('.tl-scroll');
+  if (sc) sc.scrollLeft = left ?? sc.scrollWidth;
+}
+
+function renderDelivered() {
+  const ov = document.getElementById('delivered-overlay');
+  if (ov.style.display === 'none') return;
+  const sel = document.getElementById('tl-f-cust');
+  const fc = sel.value;
+  sel.innerHTML = `<option value="">All Customers</option>` + customers.map(c=>`<option value="${c.id}"${c.id===fc?' selected':''}>${esc(c.name)}</option>`).join('');
+  renderTimelineInto(document.getElementById('delivered-body'), fc ? tasks.filter(t=>t.customerId===fc) : tasks, 'openEditModalById');
+}
+window.renderDelivered = renderDelivered;
+window.openDeliveredPanel = function() {
+  document.getElementById('delivered-overlay').style.display = 'flex';
+  document.getElementById('delivered-body').innerHTML = '';
+  renderDelivered();
+};
+window.closeDeliveredPanel = function(e) {
+  if (e && e.target !== document.getElementById('delivered-overlay')) return;
+  document.getElementById('delivered-overlay').style.display = 'none';
+};
+
 // ── Render board ──────────────────────────────────────────────────────────────
 function renderBoard() {
   const cc = document.getElementById('f-cust')?.value || '';
@@ -1082,13 +1128,8 @@ function renderBoard() {
   filtered = filtered.filter(t => !isScheduledAhead(t));
   scheduleRecurrenceWake(scheduled[0]?.dueAt);
 
-  document.querySelectorAll('#view-seg button').forEach(b => b.classList.toggle('on', b.dataset.v === taskView));
+  renderDelivered();
   const colsEl = document.getElementById('cols');
-  if (taskView === 'timeline') {
-    colsEl.innerHTML = `<div class="tl-wrap">${timelineHtml(filtered, 'openEditModalById')}</div>`;
-    setStatus(true);
-    return;
-  }
 
   const noProjects = !allProjects.length;
   colsEl.innerHTML = STATUSES.map(s => {
