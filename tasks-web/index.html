@@ -189,6 +189,24 @@ main{padding:14px 14px 96px;max-width:900px;margin:0 auto}
 .card-status-select{padding:4px 6px;border-radius:4px;border:1px solid var(--border);background:var(--surface2);font-family:'Plus Jakarta Sans',sans-serif;font-size:calc(10px * var(--fs,1));font-weight:600;cursor:pointer;outline:none;-webkit-appearance:none;appearance:none;text-align:center}
 .card-status-select:active{transform:scale(.94)}
 
+/* ── Dependencies ── */
+.card.blocked{border-color:color-mix(in srgb, var(--red) 30%, var(--border))}
+.blocked-badge{display:inline-block;max-width:calc(100% - 9px);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;vertical-align:top;margin:2px 0 6px 9px;font-size:calc(10px * var(--fs,1));font-weight:600;color:var(--red);padding:2px 7px;border-radius:4px;background:color-mix(in srgb, var(--red) 8%, transparent);border:1px solid color-mix(in srgb, var(--red) 22%, transparent)}
+.dep-chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
+.dep-chips:empty{display:none}
+.dep-chip{display:inline-flex;align-items:center;gap:4px;max-width:100%;padding:4px 4px 4px 11px;border-radius:16px;background:var(--surface2);border:1px solid var(--border);font-size:calc(12px * var(--fs,1))}
+.dep-chip span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dep-chip.done span{opacity:.5;text-decoration:line-through}
+.dep-chip button{border:none;background:transparent;color:var(--text2);cursor:pointer;font-size:calc(13px * var(--fs,1));line-height:1;width:28px;height:28px;border-radius:50%;flex-shrink:0}
+.dep-chip button:active{color:var(--red);background:var(--surface3)}
+.dep-q{width:100%;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:16px;outline:none;font-family:inherit}
+.dep-results{display:flex;flex-direction:column;margin-top:4px;max-height:200px;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.dep-result{display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;padding:10px;border:none;border-bottom:1px solid var(--border);background:transparent;color:var(--text);cursor:pointer;font-family:inherit;font-size:calc(13px * var(--fs,1))}
+.dep-result:last-child{border-bottom:none}
+.dep-result:active{background:var(--surface2)}
+.dep-result small{color:var(--text2);font-size:calc(11px * var(--fs,1))}
+.dep-hint{font-size:calc(11px * var(--fs,1));color:var(--text2);padding:6px 2px}
+
 /* ── Drag ghost ── */
 .drag-ghost{position:fixed;pointer-events:none;z-index:1000;transform:rotate(2deg) scale(1.04);box-shadow:0 10px 35px rgba(0,0,0,.6);border-radius:var(--radius);opacity:.92;transition:none}
 .col.drop-zone{transition:all .15s}
@@ -562,6 +580,12 @@ main{padding:14px 14px 96px;max-width:900px;margin:0 auto}
       <textarea id="m-notes" rows="3" placeholder="e.g. Waiting on client sign-off"
                 autocorrect="on" autocapitalize="sentences"
                 style="width:100%;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:calc(13px * var(--fs,1));outline:none;resize:vertical;font-family:inherit"></textarea>
+    </div>
+    <div class="field" id="m-deps-field" style="display:none">
+      <label>Depends on <span style="color:var(--text2);font-weight:400">(must finish first)</span></label>
+      <div class="dep-chips" id="dep-chips"></div>
+      <input class="dep-q" id="dep-q" type="search" placeholder="Search tasks to link…" autocomplete="off" oninput="renderDepResults()">
+      <div class="dep-results" id="dep-results"></div>
     </div>
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
@@ -1185,11 +1209,13 @@ function cardHtml(t) {
   const prioBadge = prio && t.priority !== 'normal'
     ? `<span style="font-size:calc(9px * var(--fs,1));font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:1px 5px;border-radius:3px;background:color-mix(in srgb, ${prio.color} 14%, transparent);color:${prio.color};border:1px solid color-mix(in srgb, ${prio.color} 30%, transparent);flex-shrink:0">${prio.label}</span>`
     : '';
-  return `<div class="card ${t.status}" data-id="${t.id}" data-status="${t.status}" draggable="true" ondragstart="taskDragStart(event,'${t.id}')" ondragend="taskDragEnd(event)">
+  const blockers = (t.dependsOn || []).map(taskById).filter(d => d && d.status !== 'done');
+  return `<div class="card ${t.status}${blockers.length?' blocked':''}" data-id="${t.id}" data-status="${t.status}" draggable="true" ondragstart="taskDragStart(event,'${t.id}')" ondragend="taskDragEnd(event)">
     <div style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px;align-items:start;margin-bottom:2px">
       <div class="card-title${done?' done':''}" style="margin-bottom:0">${esc(t.title)}</div>
       ${prioBadge || '<span></span>'}
     </div>
+    ${blockers.length?`<div class="blocked-badge">⛔ Waiting on ${blockers.length>1?blockers.length+' tasks':esc(blockers[0].title)}</div>`:''}
     <div class="card-meta">${esc(t.customerName||'')} › ${esc(t.projectName||'')}${t.recurrence?` <span style="color:var(--accent);font-weight:600">· 🔁 ${t.recurrence==='monthly'?'Monthly':'Weekly'}</span>`:''}</div>
     ${t.notes?`<div class="card-note" style="font-size:calc(12px * var(--fs,1));color:var(--text2);white-space:pre-wrap;margin:4px 0 2px;padding-left:7px;border-left:2px solid var(--border)">${esc(t.notes)}</div>`:''}
     <div class="card-actions">
@@ -1342,11 +1368,13 @@ window.onCustProjSelect = function() {
   const val = document.getElementById('m-custproj').value;
   renderChips(val);
   collapseToSummary(val);
+  if (depSelf) renderDepResults();
 };
 window.selectCombo = function(key) {
   document.getElementById('m-custproj').value = key;
   renderChips(key);
   collapseToSummary(key);
+  if (depSelf) renderDepResults();
 };
 function openModalWith(selectedValue) {
   buildCustProjSelect(selectedValue);
@@ -1367,6 +1395,7 @@ window.openAddModal = function(presetCustId, presetProjId) {
   document.getElementById('m-prio').value  = 'normal';
   document.getElementById('m-recur').value = '';
   document.getElementById('m-notes').value = '';
+  document.getElementById('m-deps-field').style.display = 'none';
   const lastCust = localStorage.getItem('tt_last_cust');
   const lastProj = localStorage.getItem('tt_last_proj');
   const defaultVal = presetCustId && presetProjId
@@ -1393,9 +1422,57 @@ window.openEditModal = function(t) {
   document.getElementById('m-recur').value = t.recurrence || '';
   document.getElementById('m-notes').value = t.notes || '';
   openModalWith(`${t.customerId}:${t.projectId}`);
+  initDepPicker(t);
+  document.getElementById('m-deps-field').style.display = '';
   document.getElementById('modal').style.display = 'flex';
   setTimeout(() => document.getElementById('m-title').focus(), 80);
 };
+
+// ── Dependency picker ── selected links as chips, search to add more.
+// With no query, suggests open tasks from the same project, then same customer.
+let depSel = [], depSelf = null;
+const taskById = id => tasks.find(x => x.id === id);
+function initDepPicker(t) {
+  depSelf = t.id;
+  document.getElementById('dep-q').value = '';
+  depSel = (t.dependsOn || []).filter(taskById);
+  renderDepPicker();
+}
+function dependsOnSelf(x, seen = new Set()) {
+  // Linking to x would create a cycle if x already (transitively) waits on this task
+  for (const d of (x.dependsOn || [])) {
+    if (d === depSelf) return true;
+    const dt = taskById(d);
+    if (seen.has(d) || !dt) continue;
+    seen.add(d);
+    if (dependsOnSelf(dt, seen)) return true;
+  }
+  return false;
+}
+function renderDepPicker() {
+  document.getElementById('dep-chips').innerHTML = depSel.map(id => { const d = taskById(id);
+    return `<span class="dep-chip${d.status==='done'?' done':''}"><span>${esc(d.title)}</span><button type="button" aria-label="Remove" onclick="removeDep('${id}')">✕</button></span>`;
+  }).join('');
+  renderDepResults();
+}
+window.renderDepResults = function() {
+  const q = document.getElementById('dep-q').value.trim().toLowerCase();
+  const [cid, pid] = (document.getElementById('m-custproj').value || '').split(':');
+  const rank = x => x.projectId === pid ? 0 : x.customerId === cid ? 1 : 2;
+  let list = tasks.filter(x => x.id !== depSelf && x.status !== 'done' && !depSel.includes(x.id) && !dependsOnSelf(x));
+  list = q ? list.filter(x => `${x.title} ${x.customerName||''} ${x.projectName||''}`.toLowerCase().includes(q))
+           : list.filter(x => rank(x) < 2);
+  list.sort((a,b) => rank(a) - rank(b));
+  document.getElementById('dep-results').innerHTML = list.slice(0,8).map(x =>
+    `<button type="button" class="dep-result" onclick="addDep('${x.id}')">+ ${esc(x.title)}<small>${esc(x.customerName||'')} › ${esc(x.projectName||'')}</small></button>`).join('')
+    || `<div class="dep-hint">${q ? 'No matching open tasks' : 'Type to search all open tasks'}</div>`;
+};
+window.addDep = function(id) {
+  if (!depSel.includes(id)) depSel.push(id);
+  document.getElementById('dep-q').value = '';
+  renderDepPicker();
+};
+window.removeDep = function(id) { depSel = depSel.filter(x => x !== id); renderDepPicker(); };
 
 window.populateModalProjects = function() {}; // superseded by grouped select
 
@@ -1422,6 +1499,7 @@ window.saveTask = async function() {
     await updateDoc(doc(db,'tasks',editingTaskId), {
       title, customerId: cid, customerName: cust.name,
       projectId: pid, projectName: proj.name, priority, recurrence, notes,
+      dependsOn: [...depSel],
     });
     editingTaskId = null;
   } else {

@@ -207,10 +207,20 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
 .task-card-onhold{border-color:#ff980040!important}
 .task-card-blocked{border-color:#ff475740!important}
 .task-priority-badge{font-size:calc(9px * var(--fs,1));font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:1px 5px;border-radius:3px;white-space:nowrap;flex-shrink:0}
-.task-blocked-badge{display:inline-flex;align-items:center;gap:3px;font-size:calc(9px * var(--fs,1));font-weight:600;color:var(--red);padding:2px 6px;border-radius:3px;background:rgba(255,71,87,.08);border:1px solid rgba(255,71,87,.2);margin-bottom:6px}
-.task-dep-checks{display:flex;flex-direction:column;gap:5px;max-height:160px;overflow-y:auto;padding:6px 8px;background:var(--bg);border:1px solid var(--border);border-radius:6px}
-.task-dep-check{display:flex;align-items:center;gap:7px;font-size:calc(11px * var(--fs,1));cursor:pointer}
-.task-dep-check input{accent-color:var(--accent);cursor:pointer}
+.task-blocked-badge{display:inline-block;max-width:100%;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;vertical-align:top;font-size:calc(9px * var(--fs,1));font-weight:600;color:var(--red);padding:2px 6px;border-radius:3px;background:rgba(255,71,87,.08);border:1px solid rgba(255,71,87,.2);margin-bottom:6px}
+.dep-chips{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:6px}
+.dep-chips:empty{display:none}
+.dep-chip{display:inline-flex;align-items:center;gap:6px;max-width:100%;padding:4px 4px 4px 9px;border-radius:14px;background:var(--surface2);border:1px solid var(--border);font-size:calc(11px * var(--fs,1))}
+.dep-chip span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dep-chip.done span{opacity:.5;text-decoration:line-through}
+.dep-chip button{border:none;background:transparent;color:var(--muted2);cursor:pointer;font-size:calc(12px * var(--fs,1));line-height:1;padding:2px 5px;border-radius:50%}
+.dep-chip button:hover{color:var(--red);background:var(--bg)}
+.dep-q{width:100%;padding:9px 11px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:calc(12px * var(--fs,1));outline:none;font-family:inherit}
+.dep-results{display:flex;flex-direction:column;margin-top:4px;max-height:180px;overflow-y:auto}
+.dep-result{display:flex;flex-direction:column;align-items:flex-start;gap:1px;text-align:left;padding:7px 9px;border:none;border-radius:5px;background:transparent;color:var(--text);cursor:pointer;font-family:inherit;font-size:calc(12px * var(--fs,1))}
+.dep-result:hover{background:var(--surface2)}
+.dep-result small{color:var(--muted2);font-size:calc(10px * var(--fs,1))}
+.dep-hint{font-size:calc(10px * var(--fs,1));color:var(--muted2);padding:4px 2px}
 /* Timeline (delivered work over time) */
 .tl-head{display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap}
 .tl-title{font-weight:700;font-size:calc(14px * var(--fs,1))}
@@ -1884,7 +1894,7 @@ function taskCardHtml(t) {
       </div>
       ${showPrio?`<span class="task-priority-badge" style="background:color-mix(in srgb, ${prio.color} 14%, transparent);color:${prio.color};border:1px solid color-mix(in srgb, ${prio.color} 30%, transparent)">${prio.label}</span>`:'<span></span>'}
     </div>
-    ${isBlocked?`<div class="task-blocked-badge">⛔ Blocked by ${blockers.length} task${blockers.length>1?'s':''}</div>`:''}
+    ${isBlocked?`<div class="task-blocked-badge" title="${esc(blockers.map(b=>taskMap[b].title).join(', '))}">⛔ Waiting on ${blockers.length>1?blockers.length+' tasks':esc(taskMap[blockers[0]].title)}</div>`:''}
     <div class="task-meta">${esc(t.customerName||'')} › ${esc(t.projectName||'')}${t.recurrence?` <span style="color:var(--accent);font-weight:600">· 🔁 ${t.recurrence==='monthly'?'Monthly':'Weekly'}</span>`:''}</div>
     ${t.notes?`<div class="task-note" style="font-size:calc(11px * var(--fs,1));color:var(--muted2);white-space:pre-wrap;margin:4px 0 2px;padding-left:7px;border-left:2px solid var(--border)">${esc(t.notes)}</div>`:''}
     <div class="task-actions">
@@ -1959,6 +1969,7 @@ window.updateTaskProjDropdown = function(preselect) {
   if (!sel || !c) return;
   sel.innerHTML = (c.projects||[]).map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join('');
   if (preselect) sel.value = preselect;
+  if (document.getElementById('dep-results')) renderDepResults();
 };
 
 window.doAddTaskFromModal = function() {
@@ -1977,11 +1988,6 @@ function openEditTaskModal(id) {
   const custOpts = customers.map(c=>`<option value="${c.id}"${c.id===t.customerId?' selected':''}>${esc(c.name)}</option>`).join('');
   const prioOpts = TASK_PRIORITIES.map(p=>`<option value="${p.id}"${p.id===(t.priority||'normal')?' selected':''}>${p.label}</option>`).join('');
   const recurOpts = [['','Doesn\'t repeat'],['weekly','Weekly'],['monthly','Monthly']].map(([v,l])=>`<option value="${v}"${v===(t.recurrence||'')?' selected':''}>${l}</option>`).join('');
-  const currentDeps = t.dependsOn || [];
-  const otherTasks = tasks.filter(x=>x.id!==id&&x.status!=='done'&&!isScheduledAhead(x));
-  const depChecks = otherTasks.length
-    ? otherTasks.map(x=>`<label class="task-dep-check"><input type="checkbox" value="${x.id}"${currentDeps.includes(x.id)?' checked':''}><span>${esc(x.title)}<span style="color:var(--muted2);margin-left:4px">(${esc(x.customerName||'')} › ${esc(x.projectName||'')})</span></span></label>`).join('')
-    : `<div style="font-size:calc(11px * var(--fs,1));color:var(--muted2)">No other open tasks to link</div>`;
   showModal('Edit Task',
     `<div class="form-field">
        <label>Customer</label>
@@ -2010,15 +2016,62 @@ function openEditTaskModal(id) {
        <textarea id="m-task-notes" rows="3" placeholder="e.g. Waiting on client sign-off" autocorrect="on" autocapitalize="sentences" style="width:100%;padding:9px 11px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:calc(12px * var(--fs,1));outline:none;resize:vertical;font-family:inherit">${esc(t.notes||'')}</textarea>
      </div>
      <div class="form-field">
-       <label>Depends on (must finish first)</label>
-       <div class="task-dep-checks" id="m-task-deps">${depChecks}</div>
+       <label>Depends on <span style="color:var(--muted2);font-weight:400">(must finish first)</span></label>
+       <div class="dep-chips" id="dep-chips"></div>
+       <input class="dep-q" id="dep-q" type="search" placeholder="Search tasks to link…" autocomplete="off" oninput="renderDepResults()">
+       <div class="dep-results" id="dep-results"></div>
      </div>`,
     `<button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
      <button class="btn btn-primary" onclick="doEditTask('${t.id}')">Save</button>`);
   updateTaskProjDropdown(t.projectId);
+  initDepPicker(t);
   setTimeout(()=>document.getElementById('m-task-title')?.focus(),50);
 }
 window.openEditTaskModal = openEditTaskModal;
+
+// ── Dependency picker ── selected links as chips, search to add more.
+// With no query, suggests open tasks from the same project, then same customer.
+let depSel = [], depSelf = null;
+function initDepPicker(t) {
+  depSelf = t.id;
+  depSel = (t.dependsOn||[]).filter(id=>taskMap[id]);
+  renderDepPicker();
+}
+function dependsOnSelf(x, seen=new Set()) {
+  // Linking to x would create a cycle if x already (transitively) waits on this task
+  for (const d of (x.dependsOn||[])) {
+    if (d===depSelf) return true;
+    if (seen.has(d) || !taskMap[d]) continue;
+    seen.add(d);
+    if (dependsOnSelf(taskMap[d], seen)) return true;
+  }
+  return false;
+}
+function renderDepPicker() {
+  const el = document.getElementById('dep-chips'); if (!el) return;
+  el.innerHTML = depSel.map(id=>{ const d=taskMap[id];
+    return `<span class="dep-chip${d.status==='done'?' done':''}" title="${esc(d.customerName||'')} › ${esc(d.projectName||'')}"><span>${esc(d.title)}</span><button type="button" aria-label="Remove" onclick="removeDep('${id}')">✕</button></span>`;
+  }).join('');
+  renderDepResults();
+}
+window.renderDepResults = function() {
+  const el = document.getElementById('dep-results'); if (!el) return;
+  const q = (document.getElementById('dep-q')?.value||'').trim().toLowerCase();
+  const pid = document.getElementById('m-task-proj')?.value, cid = document.getElementById('m-task-cust')?.value;
+  const rank = x => x.projectId===pid ? 0 : x.customerId===cid ? 1 : 2;
+  let list = tasks.filter(x=>x.id!==depSelf && x.status!=='done' && !depSel.includes(x.id) && !dependsOnSelf(x));
+  list = q ? list.filter(x=>`${x.title} ${x.customerName||''} ${x.projectName||''}`.toLowerCase().includes(q))
+           : list.filter(x=>rank(x)<2);
+  list.sort((a,b)=>rank(a)-rank(b));
+  el.innerHTML = list.slice(0,8).map(x=>`<button type="button" class="dep-result" onclick="addDep('${x.id}')">+ ${esc(x.title)}<small>${esc(x.customerName||'')} › ${esc(x.projectName||'')}</small></button>`).join('')
+    || `<div class="dep-hint">${q?'No matching open tasks':'Type to search all open tasks'}</div>`;
+};
+window.addDep = function(id) {
+  if (!depSel.includes(id)) depSel.push(id);
+  const q = document.getElementById('dep-q'); if (q) q.value = '';
+  renderDepPicker();
+};
+window.removeDep = function(id) { depSel = depSel.filter(x=>x!==id); renderDepPicker(); };
 
 window.doEditTask = async function(id) {
   const cust = customers.find(c=>c.id===document.getElementById('m-task-cust')?.value);
@@ -2027,7 +2080,7 @@ window.doEditTask = async function(id) {
   const priority = document.getElementById('m-task-prio')?.value || 'normal';
   const recurrence = document.getElementById('m-task-recur')?.value || '';
   const notes = document.getElementById('m-task-notes')?.value.trim() || '';
-  const dependsOn = [...document.querySelectorAll('#m-task-deps input:checked')].map(cb=>cb.value);
+  const dependsOn = [...depSel];
   if (!cust||!proj||!title) return;
   closeModal();
   const { doc, updateDoc } = _fs;
