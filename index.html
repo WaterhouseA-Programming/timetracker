@@ -581,7 +581,7 @@ main{padding:14px 14px 96px;max-width:900px;margin:0 auto}
                 autocorrect="on" autocapitalize="sentences"
                 style="width:100%;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:calc(13px * var(--fs,1));outline:none;resize:vertical;font-family:inherit"></textarea>
     </div>
-    <div class="field" id="m-deps-field" style="display:none">
+    <div class="field" id="m-deps-field">
       <label>Depends on <span style="color:var(--text2);font-weight:400">(must finish first)</span></label>
       <div class="dep-chips" id="dep-chips"></div>
       <input class="dep-q" id="dep-q" type="search" placeholder="Search tasks to link…" autocomplete="off" oninput="renderDepResults()">
@@ -1368,13 +1368,13 @@ window.onCustProjSelect = function() {
   const val = document.getElementById('m-custproj').value;
   renderChips(val);
   collapseToSummary(val);
-  if (depSelf) renderDepResults();
+  renderDepResults();
 };
 window.selectCombo = function(key) {
   document.getElementById('m-custproj').value = key;
   renderChips(key);
   collapseToSummary(key);
-  if (depSelf) renderDepResults();
+  renderDepResults();
 };
 function openModalWith(selectedValue) {
   buildCustProjSelect(selectedValue);
@@ -1395,13 +1395,13 @@ window.openAddModal = function(presetCustId, presetProjId) {
   document.getElementById('m-prio').value  = 'normal';
   document.getElementById('m-recur').value = '';
   document.getElementById('m-notes').value = '';
-  document.getElementById('m-deps-field').style.display = 'none';
   const lastCust = localStorage.getItem('tt_last_cust');
   const lastProj = localStorage.getItem('tt_last_proj');
   const defaultVal = presetCustId && presetProjId
     ? `${presetCustId}:${presetProjId}`
     : (lastCust && lastProj ? `${lastCust}:${lastProj}` : null);
   openModalWith(defaultVal);
+  initDepPicker({ id: null });
   document.getElementById('modal').style.display = 'flex';
   setTimeout(() => document.getElementById('m-title').focus(), 80);
 };
@@ -1423,7 +1423,6 @@ window.openEditModal = function(t) {
   document.getElementById('m-notes').value = t.notes || '';
   openModalWith(`${t.customerId}:${t.projectId}`);
   initDepPicker(t);
-  document.getElementById('m-deps-field').style.display = '';
   document.getElementById('modal').style.display = 'flex';
   setTimeout(() => document.getElementById('m-title').focus(), 80);
 };
@@ -1507,6 +1506,7 @@ window.saveTask = async function() {
       title, status:'todo', priority, recurrence, notes,
       customerId:cid, customerName:cust.name,
       projectId:pid,  projectName:proj.name,
+      dependsOn: [...depSel],
       createdAt: serverTimestamp(),
     });
   }
