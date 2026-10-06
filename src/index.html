@@ -1954,10 +1954,17 @@ function openAddTaskModal() {
      <div class="form-field">
        <label>Note <span style="color:var(--muted2);font-weight:400">(why this status, context…)</span></label>
        <textarea id="m-task-notes" rows="3" placeholder="e.g. Waiting on client sign-off" autocorrect="on" autocapitalize="sentences" style="width:100%;padding:9px 11px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:calc(12px * var(--fs,1));outline:none;resize:vertical;font-family:inherit"></textarea>
+     </div>
+     <div class="form-field">
+       <label>Depends on <span style="color:var(--muted2);font-weight:400">(must finish first)</span></label>
+       <div class="dep-chips" id="dep-chips"></div>
+       <input class="dep-q" id="dep-q" type="search" placeholder="Search tasks to link…" autocomplete="off" oninput="renderDepResults()">
+       <div class="dep-results" id="dep-results"></div>
      </div>`,
     `<button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
      <button class="btn btn-primary" onclick="doAddTaskFromModal()">Add</button>`);
   updateTaskProjDropdown();
+  initDepPicker({ id: null });
   setTimeout(()=>document.getElementById('m-task-title')?.focus(),50);
 }
 window.openAddTaskModal = openAddTaskModal;
@@ -1979,7 +1986,7 @@ window.doAddTaskFromModal = function() {
   const prio = document.getElementById('m-task-prio')?.value || 'normal';
   if (!cust||!proj||!title) return;
   closeModal();
-  doAddTask(cust.id, cust.name, proj.id, proj.name, title, prio);
+  doAddTask(cust.id, cust.name, proj.id, proj.name, title, prio, [...depSel]);
 };
 
 function openEditTaskModal(id) {
@@ -2219,7 +2226,7 @@ function doAddTaskFromArgs() {
   if (a) doAddTask(a.cid, a.cname, a.pid, a.pname);
 }
 window.doAddTaskFromArgs = doAddTaskFromArgs;
-async function doAddTask(cid, cname, pid, pname, titleArg, prioArg) {
+async function doAddTask(cid, cname, pid, pname, titleArg, prioArg, dependsOn = []) {
   const title = titleArg || document.getElementById('m-task-title')?.value.trim(); if(!title)return;
   const priority = prioArg || document.getElementById('m-task-prio')?.value || 'normal';
   const recurrence = document.getElementById('m-task-recur')?.value || '';
@@ -2230,6 +2237,7 @@ async function doAddTask(cid, cname, pid, pname, titleArg, prioArg) {
     title:title.trim(), status:'todo', priority, recurrence, notes,
     customerId:cid, customerName:cname,
     projectId:pid,  projectName:pname,
+    dependsOn,
     createdAt:serverTimestamp(),
   });
 }
