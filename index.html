@@ -205,6 +205,8 @@ main{padding:14px 14px 96px;max-width:900px;margin:0 auto}
 .dep-result:last-child{border-bottom:none}
 .dep-result:active{background:var(--surface2)}
 .dep-result small{color:var(--text2);font-size:calc(11px * var(--fs,1))}
+.dep-add-btn{width:100%;padding:10px 12px;background:transparent;border:1px dashed var(--border);border-radius:var(--radius-sm);color:var(--text2);font-size:calc(13px * var(--fs,1));font-family:inherit;cursor:pointer;text-align:left;margin-bottom:6px}
+.dep-add-btn:active{background:var(--surface2)}
 .dep-hint{font-size:calc(11px * var(--fs,1));color:var(--text2);padding:6px 2px}
 
 /* ── Drag ghost ── */
@@ -236,7 +238,7 @@ main{padding:14px 14px 96px;max-width:900px;margin:0 auto}
 @media(min-width:480px){.overlay{align-items:center;padding:16px}}
 .modal{background:var(--surface);border:1px solid var(--border);border-radius:16px 16px 0 0;padding:8px 20px 36px;width:100%;max-width:420px;animation:slideUp .22s ease}
 @media(min-width:480px){.modal{border-radius:14px;padding:24px;animation:pop .18s ease}}
-.modal-tall{max-height:80dvh;overflow-y:auto}
+.modal-tall{max-height:88dvh;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
 @keyframes slideUp{from{transform:translateY(60px);opacity:0}to{transform:none;opacity:1}}
 @keyframes pop{from{opacity:0;transform:scale(.95)}to{opacity:1;transform:none}}
 .modal-handle{width:36px;height:4px;background:var(--border);border-radius:2px;margin:8px auto 16px}
@@ -537,7 +539,7 @@ main{padding:14px 14px 96px;max-width:900px;margin:0 auto}
 </div>
 
 <div class="overlay" id="modal" style="display:none" onclick="closeModal(event)">
-  <div class="modal" onclick="event.stopPropagation()">
+  <div class="modal modal-tall" onclick="event.stopPropagation()">
     <div class="modal-handle"></div>
     <h3 id="modal-title">Add Task</h3>
     <div class="field">
@@ -584,8 +586,11 @@ main{padding:14px 14px 96px;max-width:900px;margin:0 auto}
     <div class="field" id="m-deps-field">
       <label>Depends on <span style="color:var(--text2);font-weight:400">(must finish first)</span></label>
       <div class="dep-chips" id="dep-chips"></div>
-      <input class="dep-q" id="dep-q" type="search" placeholder="Search tasks to link…" autocomplete="off" oninput="renderDepResults()">
-      <div class="dep-results" id="dep-results"></div>
+      <button type="button" class="dep-add-btn" id="dep-add-btn" onclick="toggleDepSearch()">+ Link a task</button>
+      <div id="dep-search" hidden>
+        <input class="dep-q" id="dep-q" type="search" placeholder="Search tasks to link…" autocomplete="off" oninput="renderDepResults()">
+        <div class="dep-results" id="dep-results"></div>
+      </div>
     </div>
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
@@ -1436,7 +1441,16 @@ function initDepPicker(t) {
   document.getElementById('dep-q').value = '';
   depSel = (t.dependsOn || []).filter(taskById);
   renderDepPicker();
+  toggleDepSearch(false);
 }
+// Search list stays hidden until asked for, so it can't push the form off-screen
+window.toggleDepSearch = function(open) {
+  const box = document.getElementById('dep-search');
+  if (open === undefined) open = box.hidden;
+  box.hidden = !open;
+  document.getElementById('dep-add-btn').textContent = open ? 'Close' : '+ Link a task';
+  if (open) { renderDepResults(); document.getElementById('dep-q').focus(); }
+};
 function dependsOnSelf(x, seen = new Set()) {
   // Linking to x would create a cycle if x already (transitively) waits on this task
   for (const d of (x.dependsOn || [])) {
@@ -1470,6 +1484,7 @@ window.addDep = function(id) {
   if (!depSel.includes(id)) depSel.push(id);
   document.getElementById('dep-q').value = '';
   renderDepPicker();
+  toggleDepSearch(false);
 };
 window.removeDep = function(id) { depSel = depSel.filter(x => x !== id); renderDepPicker(); };
 
