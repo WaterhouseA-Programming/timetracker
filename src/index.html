@@ -220,6 +220,8 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
 .dep-result{display:flex;flex-direction:column;align-items:flex-start;gap:1px;text-align:left;padding:7px 9px;border:none;border-radius:5px;background:transparent;color:var(--text);cursor:pointer;font-family:inherit;font-size:calc(12px * var(--fs,1))}
 .dep-result:hover{background:var(--surface2)}
 .dep-result small{color:var(--muted2);font-size:calc(10px * var(--fs,1))}
+.dep-add-btn{width:100%;padding:8px 11px;background:transparent;border:1px dashed var(--border);border-radius:6px;color:var(--muted2);font-size:calc(12px * var(--fs,1));font-family:inherit;cursor:pointer;text-align:left;margin-bottom:4px}
+.dep-add-btn:hover{background:var(--surface2);color:var(--text)}
 .dep-hint{font-size:calc(10px * var(--fs,1));color:var(--muted2);padding:4px 2px}
 /* Timeline (delivered work over time) */
 .tl-head{display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap}
@@ -1958,8 +1960,11 @@ function openAddTaskModal() {
      <div class="form-field">
        <label>Depends on <span style="color:var(--muted2);font-weight:400">(must finish first)</span></label>
        <div class="dep-chips" id="dep-chips"></div>
-       <input class="dep-q" id="dep-q" type="search" placeholder="Search tasks to link…" autocomplete="off" oninput="renderDepResults()">
-       <div class="dep-results" id="dep-results"></div>
+       <button type="button" class="dep-add-btn" id="dep-add-btn" onclick="toggleDepSearch()">+ Link a task</button>
+       <div id="dep-search" hidden>
+         <input class="dep-q" id="dep-q" type="search" placeholder="Search tasks to link…" autocomplete="off" oninput="renderDepResults()">
+         <div class="dep-results" id="dep-results"></div>
+       </div>
      </div>`,
     `<button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
      <button class="btn btn-primary" onclick="doAddTaskFromModal()">Add</button>`);
@@ -2025,8 +2030,11 @@ function openEditTaskModal(id) {
      <div class="form-field">
        <label>Depends on <span style="color:var(--muted2);font-weight:400">(must finish first)</span></label>
        <div class="dep-chips" id="dep-chips"></div>
-       <input class="dep-q" id="dep-q" type="search" placeholder="Search tasks to link…" autocomplete="off" oninput="renderDepResults()">
-       <div class="dep-results" id="dep-results"></div>
+       <button type="button" class="dep-add-btn" id="dep-add-btn" onclick="toggleDepSearch()">+ Link a task</button>
+       <div id="dep-search" hidden>
+         <input class="dep-q" id="dep-q" type="search" placeholder="Search tasks to link…" autocomplete="off" oninput="renderDepResults()">
+         <div class="dep-results" id="dep-results"></div>
+       </div>
      </div>`,
     `<button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
      <button class="btn btn-primary" onclick="doEditTask('${t.id}')">Save</button>`);
@@ -2043,7 +2051,16 @@ function initDepPicker(t) {
   depSelf = t.id;
   depSel = (t.dependsOn||[]).filter(id=>taskMap[id]);
   renderDepPicker();
+  toggleDepSearch(false);
 }
+// Search list stays hidden until asked for, so it can't push the form off-screen
+window.toggleDepSearch = function(open) {
+  const box = document.getElementById('dep-search'); if (!box) return;
+  if (open === undefined) open = box.hidden;
+  box.hidden = !open;
+  document.getElementById('dep-add-btn').textContent = open ? 'Close' : '+ Link a task';
+  if (open) { renderDepResults(); document.getElementById('dep-q')?.focus(); }
+};
 function dependsOnSelf(x, seen=new Set()) {
   // Linking to x would create a cycle if x already (transitively) waits on this task
   for (const d of (x.dependsOn||[])) {
@@ -2077,6 +2094,7 @@ window.addDep = function(id) {
   if (!depSel.includes(id)) depSel.push(id);
   const q = document.getElementById('dep-q'); if (q) q.value = '';
   renderDepPicker();
+  toggleDepSearch(false);
 };
 window.removeDep = function(id) { depSel = depSel.filter(x=>x!==id); renderDepPicker(); };
 
