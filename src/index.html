@@ -1054,6 +1054,9 @@ function refreshProjectsIntoCustomers() {
 
 function afterDataSync() {
   api.timerStateUpdate(Object.values(activeTimers)); // keep main.js in sync
+  // Task modal may have opened before projects arrived; refill its project list
+  const taskProj = document.getElementById('m-task-proj');
+  if (taskProj) window.updateTaskProjDropdown(taskProj.value);
   renderTracker();
   renderLog();
   renderManage();

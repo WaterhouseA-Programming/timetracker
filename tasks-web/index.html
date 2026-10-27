@@ -973,13 +973,13 @@ function subscribeAll() {
     snap.docs.forEach(d => { cMap[d.id] = { id:d.id, ...d.data(), projects:[] }; });
     allProjects.forEach(p => { if (cMap[p.customerId]) cMap[p.customerId].projects.push(p); });
     customers = Object.values(cMap).sort((a,b) => a.name.localeCompare(b.name));
-    populateFilters(); renderBoard(); renderManageList();
+    populateFilters(); renderBoard(); renderManageList(); refreshModalProjects();
   }, err => showSyncError('Customers: ' + err.message));
 
   onSnapshot(collection(db,'projects'), snap => {
     allProjects = snap.docs.map(d => ({ id:d.id, ...d.data() })).sort((a,b) => a.name.localeCompare(b.name));
     customers.forEach(c => { c.projects = allProjects.filter(p => p.customerId === c.id); });
-    populateFilters(); renderBoard(); renderManageList();
+    populateFilters(); renderBoard(); renderManageList(); refreshModalProjects();
   }, err => showSyncError('Projects: ' + err.message));
 
   onSnapshot(query(collection(db,'tasks'), orderBy('createdAt','asc')), snap => {
@@ -1381,7 +1381,20 @@ window.selectCombo = function(key) {
   collapseToSummary(key);
   renderDepResults();
 };
+// Value the task modal wants selected, kept so it can be re-applied when
+// customers/projects arrive after the modal was opened (slow first sync on mobile)
+let modalProjVal = null;
+function refreshModalProjects() {
+  if (document.getElementById('modal').style.display !== 'flex') return;
+  const sel = document.getElementById('m-custproj');
+  const hadOptions = sel.options.length > 0;
+  const cur = sel.value || modalProjVal;
+  if (!hadOptions) { openModalWith(cur); renderDepResults(); return; }
+  buildCustProjSelect(cur);
+  renderChips(sel.value);
+}
 function openModalWith(selectedValue) {
+  modalProjVal = selectedValue;
   buildCustProjSelect(selectedValue);
   renderChips(selectedValue);
   if (selectedValue && document.getElementById('m-custproj').value === selectedValue) {
