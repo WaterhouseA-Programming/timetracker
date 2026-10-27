@@ -10,7 +10,7 @@
     "jose": "^6.2.12"
   },
   "devDependencies": {
-    "wrangler": "^4.136.1"
+    "wrangler": "^4.154.0"
   },
   "private": true
 }
