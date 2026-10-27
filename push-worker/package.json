@@ -7,10 +7,10 @@
   "type": "module",
   "dependencies": {
     "@block65/webcrypto-web-push": "^2.0.0",
-    "jose": "^6.2.12"
+    "jose": "^6.2.13"
   },
   "devDependencies": {
-    "wrangler": "^4.136.1"
+    "wrangler": "^4.152.0"
   },
   "private": true
 }
