@@ -1910,7 +1910,7 @@ function taskCardHtml(t) {
       ${!done?`<button class="task-act-btn" onclick="openLogTimeModal('${t.id}')">⏱ Log</button>`:''}
       <button class="task-act-btn${t.notes?' advance':''}" onclick="openNoteModal('${t.id}')" title="${t.notes?'Edit note':'Add note'}">📝 Note</button>
       <button class="task-act-btn" onclick="openEditTaskModal('${t.id}')" title="Edit task">✎</button>
-      <button class="task-act-btn copy-btn" data-title="${esc(t.title)}" onclick="copyTaskTitle(this)">⎘</button>
+      <button class="task-act-btn copy-btn" data-title="${esc(t.notes ? t.title+'\n'+t.notes : t.title)}" onclick="copyTaskTitle(this)" title="Copy title and notes">⎘</button>
       <button class="task-act-btn" style="margin-left:auto" onclick="removeTask('${t.id}')">✕</button>
     </div>
   </div>`;
