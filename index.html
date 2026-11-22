@@ -1229,6 +1229,7 @@ function cardHtml(t) {
       </select>
       <button class="card-btn${t.notes?' advance':''}" onclick="openNoteModal('${t.id}')">📝 Note</button>
       <button class="card-btn" onclick="openEditModalById('${esc(t.id)}')">✎ Edit</button>
+      <button class="card-btn" data-copy="${esc(t.notes ? t.title+'\n'+t.notes : t.title)}" onclick="copyText(this)" title="Copy title and notes">⎘</button>
       <button class="card-btn del" onclick="removeTask('${t.id}')">✕</button>
     </div>
   </div>`;
